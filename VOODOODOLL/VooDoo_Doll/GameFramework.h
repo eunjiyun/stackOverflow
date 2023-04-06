@@ -8,6 +8,9 @@
 #include "Stage.h"
 #include "Login.h"
 #include <vector>
+#include <queue>
+#include <array>
+
 
 class CGameFramework
 {
@@ -44,7 +47,6 @@ public:
 	LONG		Get_OldCursorPointX() { return m_ptOldCursorPos.x; }
 	LONG		Get_OldCursorPointY() { return m_ptOldCursorPos.y; }
 
-	void ProcessInput();
 	void AnimateObjects(float fTimeElapsed);
 	void FrameAdvance();
 
@@ -58,9 +60,6 @@ public:
 	void Scene_Change(SCENEID _eSceneid);
 	SCENEID m_eCurrentScene;
 	SCENEID m_ePrevScene;
-
-	//23.02.20
-	void changePlayerForm(CPlayer**);
 
 private:
 	HINSTANCE					m_hInstance;
@@ -96,15 +95,12 @@ private:
 public:
 	bool wakeUp = true;
 	int whatPlayer = 1;
-	bool changePlayerMode = false;
-	int otherPlayerWhat = 1;
-	bool p1Change = false;
 	CGameObject* m_pLockedObject = NULL;
 
-	CLoadedModelInfo** pMonsterModel = NULL;// , pMonsterModel2, pMonsterModel3, pMonsterModel4, pMonsterModel5, pMonsterModel6 = NULL;
-	int num[6] = {};
-	CLoadedModelInfo* monModel = NULL;
-
+	queue<CLoadedModelInfo*> pMonsterModel[6];// , pMonsterModel2, pMonsterModel3, pMonsterModel4, pMonsterModel5, pMonsterModel6 = NULL;
+	queue<CLoadedModelInfo*> MagiciansHat;
+	array<char*, 6> binFileNames = { "Model/Voodoo1.bin", "Model/Voodoo2.bin", "Model/Voodoo3.bin", "Model/Voodoo4.bin",
+	"Model/Voodoo5.bin" ,"Model/Voodoo6.bin" };
 #if defined(_DEBUG)
 	ID3D12Debug* m_pd3dDebugController;
 #endif
@@ -112,13 +108,12 @@ public:
 	CGameTimer					m_GameTimer;
 
 	CStage* m_pStage = NULL;
-	LIGHT* m_pLights = NULL;
 
 	CLogin* m_pLogin = NULL;
 
 	CPlayer* m_pPlayer = NULL;
 	vector<CPlayer*> Players;
-	vector<CGameObject*> Monsters;
+	vector<CMonster*> Monsters;
 	int									m_nHierarchicalGameObjects = 0;
 	CGameObject** m_ppHierarchicalGameObjects = NULL;
 
@@ -129,6 +124,7 @@ public:
 	_TCHAR						m_pszFrameRate[70];
 
 	CGameObject** m_ppBullets = NULL;//총알
+	CGameObject** m_ppCap = NULL;//마법모자
 	bool onFullScreen = false;
 };
 

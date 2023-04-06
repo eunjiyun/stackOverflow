@@ -6,21 +6,13 @@
 
 #include "Shader.h"
 #include "Player.h"
+#include "Monster.h"
+
 
 #define MAX_LIGHTS						16 
 #define POINT_LIGHT						1
 #define SPOT_LIGHT						2
 #define DIRECTIONAL_LIGHT				3
-
-struct SHADOWMATERIAL
-{
-	XMFLOAT4				m_xmf4Ambient;
-	XMFLOAT4				m_xmf4Diffuse;
-	XMFLOAT4				m_xmf4Specular; //(r,g,b,a=power)
-	XMFLOAT4				m_xmf4Emissive;
-};
-
-
 
 struct LIGHT
 {
@@ -64,6 +56,7 @@ class CStage
 public:
 	CStage();
 	~CStage();
+	int num = 0;
 
 	bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
@@ -72,31 +65,27 @@ public:
 	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void ReleaseShaderVariables();
 
-	void BuildDefaultLightsAndMaterials(LIGHT*);
+	void BuildDefaultLightsAndMaterials();
 	void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	void ReleaseObjects();
-
-	void BuildShadowLights();
 
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
 	ID3D12RootSignature* GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
 
 	bool ProcessInput(UCHAR* pKeysBuffer);
 	void AnimateObjects(float fTimeElapsed);
-	void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList,LIGHT*);
-	void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
 
 	void ReleaseUploadBuffers();
 	void SetCbvGPUDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle) { m_d3dCbvGPUDescriptorHandle = d3dCbvGPUDescriptorHandle; }
 
 	void UpdateBoundingBox();
-	void CheckObjectByObjectCollisions(float fTimeElapsed);
+	void CheckObjectByObjectCollisions(float fTimeElapsed, CPlayer*& Pl);
+	void CheckMoveObjectsCollisions(float TimeElapsed, CPlayer*& pl, vector<CMonster*>& monsters, vector<CPlayer*>& players);
 	XMFLOAT3 GetReflectVec(XMFLOAT3 ObjLook, XMFLOAT3 MovVec);
 
 	XMFLOAT3 Calculate_Direction(BoundingBox& pBouningBoxA, BoundingBox& pBouningBoxB);
 
-	XMFLOAT3 Get_BoundingBoxVertex(BoundingBox& pBoundingbox, int nIndex);
 
 	CPlayer* m_pPlayer = NULL;
 
@@ -134,16 +123,12 @@ public:
 
 	float								m_fElapsedTime = 0.0f;
 
-	int									m_nGameObjects = 0;
-	CGameObject** m_ppGameObjects = NULL;
-
 	CGameObject* monsterLight = NULL;
+
 
 	XMFLOAT3							m_xmf3RotatePosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
 	LIGHT* m_pLights = NULL;
-	LIGHTS* m_pShadowLights = NULL;
-
 	int									m_nLights = 0;
 	MATERIALS* m_pMaterials = NULL;
 	ID3D12Resource* m_pd3dcbMaterials = NULL;
@@ -168,12 +153,4 @@ public:
 	XMFLOAT4X4					m_xmf4x4World = Matrix4x4::Identity();
 
 	int whatPlayer = 1;
-
-	CShadowMapShader* m_pShadowShader = NULL;
-	CDepthRenderShader* m_pDepthRenderShader = NULL;
-	CTextureToViewportShader* m_pShadowMapToViewport = NULL;
-
-public:
-	CShader** m_ppShaders = NULL;
-	int								m_nShaders = 0;
 };

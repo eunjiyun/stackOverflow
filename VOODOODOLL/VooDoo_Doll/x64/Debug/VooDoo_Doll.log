@@ -1,17 +1,1 @@
-﻿  compilation object save succeeded; see C:\Users\UserK\Desktop\stackOverflow\VOODOODOLL\x64\Debug\Shaders.cso
-  stdafx.cpp
-  Camera.cpp
-  DDSTextureLoader12.cpp
-  GameFramework.cpp
-  Login.cpp
-  Mesh.cpp
-  Monster.cpp
-  Object.cpp
-  Player.cpp
-  Shader.cpp
-  Stage.cpp
-  Timer.cpp
-  VooDoo_Doll.cpp
-  WICTextureLoader12.cpp
-  코드를 생성하고 있습니다...
-  VooDoo_Doll.vcxproj -> C:\Users\UserK\Desktop\stackOverflow\VOODOODOLL\x64\Debug\VooDoo_Doll.exe
+﻿

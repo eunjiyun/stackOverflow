@@ -393,7 +393,7 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 			{
 				nReads = (UINT)::fread(&nAlbedoTextureStrLength, sizeof(BYTE), 1, pFile);
 				nReads = (UINT)::fread(strAlbedoTextureName, sizeof(char), nAlbedoTextureStrLength, pFile);
-				/*pGameObject->SetAlbedoTexture(k, pd3dDevice, pd3dCommandList, strAlbedoTextureName, nTextureNumber);*/
+				//pGameObject->SetAlbedoTexture(k, pd3dDevice, pd3dCommandList, strAlbedoTextureName, nTextureNumber);
 			}
 
 
@@ -424,9 +424,18 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 			pGameObject->SetMesh(0, pMesh);
 		}
+		
+		//cout << "Name: " << pGameObject->m_pstrName << " : ";
 
+
+		/*printf("Orientation: (%f, %f, %f, %f)\n", pGameObject->m_ppMeshes[0]->OBBox.Orientation.x,
+			pGameObject->m_ppMeshes[0]->OBBox.Orientation.y, pGameObject->m_ppMeshes[0]->OBBox.Orientation.z, pGameObject->m_ppMeshes[0]->OBBox.Orientation.w);*/
+
+		//	cout << "\nCenter: " << pGameObject->m_ppMeshes[0]->OBBox.Center.x << ", " << pGameObject->m_ppMeshes[0]->OBBox.Center.y << ", " << pGameObject->m_ppMeshes[0]->OBBox.Center.z <<
+		//		"\nExtents: " << pGameObject->m_ppMeshes[0]->OBBox.Extents.x << ", " << pGameObject->m_ppMeshes[0]->OBBox.Extents.y << ", " << pGameObject->m_ppMeshes[0]->OBBox.Extents.z << endl << endl << endl;
+		//
+		
 		ppGameObjects[i] = pGameObject;
-
 	}
 
 

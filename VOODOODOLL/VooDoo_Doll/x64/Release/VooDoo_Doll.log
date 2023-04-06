@@ -1,20 +1,7 @@
-﻿  Camera.cpp
-  DDSTextureLoader12.cpp
-  GameFramework.cpp
-  Login.cpp
-  Mesh.cpp
-  Monster.cpp
-  Object.cpp
-  Player.cpp
-  Shader.cpp
-  Stage.cpp
-  Timer.cpp
-  VooDoo_Doll.cpp
-  WICTextureLoader12.cpp
-  stdafx.cpp
+﻿  Shader.cpp
   코드를 생성하고 있습니다.
-  10 of 910 functions ( 1.1%) were compiled, the rest were copied from previous compilation.
+  1 of 1022 functions (<0.1%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
     4 functions had inline decision re-evaluated but remain unchanged
   코드를 생성했습니다.
-  VooDoo_Doll.vcxproj -> C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\x64\Release\VooDoo_Doll.exe
+  VooDoo_Doll.vcxproj -> C:\Users\user\Desktop\Graduation_Work\VOODOODOLL\x64\Release\VooDoo_Doll.exe
