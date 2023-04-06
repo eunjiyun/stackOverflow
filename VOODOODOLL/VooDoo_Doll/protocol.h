@@ -5,7 +5,6 @@ constexpr int BUF_SIZE = 512;
 constexpr int NAME_SIZE = 20;
 
 constexpr int MAX_USER = 10000;
-constexpr int MAX_ROOM = 2500;
 constexpr int MAX_USER_PER_ROOM = 4;
 constexpr int MAX_MONSTER_PER_ROOM = 10;
 
@@ -17,16 +16,13 @@ constexpr int VIEW_RANGE = 4;
 // Packet ID
 constexpr char CS_LOGIN = 0;
 constexpr char CS_MOVE = 1;
-constexpr char CS_ATTACK = 2;
-constexpr char CS_COLLECT = 3;
-constexpr char CS_CHANGEWEAPON = 4;
 
-constexpr char SC_LOGIN_INFO = 5;
-constexpr char SC_ADD_PLAYER = 6;
-constexpr char SC_REMOVE_PLAYER = 7;
-constexpr char SC_MOVE_PLAYER = 8;
-constexpr char SC_SUMMON_MONSTER = 9;
-constexpr char SC_MOVE_MONSTER = 10;
+constexpr char SC_LOGIN_INFO = 2;
+constexpr char SC_ADD_PLAYER = 3;
+constexpr char SC_REMOVE_PLAYER = 4;
+constexpr char SC_MOVE_PLAYER = 5;
+constexpr char SC_SUMMON_MONSTER = 6;
+constexpr char SC_MOVE_MONSTER = 7;
 #include "stdafx.h"
 
 
@@ -34,7 +30,7 @@ constexpr char SC_MOVE_MONSTER = 10;
 struct CS_LOGIN_PACKET {
 	unsigned char size;
 	char	type;
-	//char	name[NAME_SIZE];
+	char	name[NAME_SIZE];
 };
 constexpr short CS_LOGIN_PACKET_SIZE = sizeof(CS_LOGIN_PACKET);
 
@@ -43,37 +39,12 @@ struct CS_MOVE_PACKET {
 	char	type;
 	DWORD	direction = 0;
 	short	id;
-	float cxDelta = 0.f;
-	float cyDelta = 0.f;
-	float czDelta = 0.f;
+	float cxDelta, cyDelta, czDelta;
 	XMFLOAT3 pos;
-	XMFLOAT3 vel;
+	//unsigned move_time;
 };
+
 constexpr short CS_MOVE_PACKET_SIZE = sizeof(CS_MOVE_PACKET);
-
-struct CS_ATTACK_PACKET {
-	unsigned char size;
-	char	type;
-	short	id;
-	XMFLOAT3 pos;
-};
-constexpr short CS_ATTACK_PACKET_SIZE = sizeof(CS_ATTACK_PACKET);
-
-struct CS_COLLECT_PACKET {
-	unsigned char size;
-	char	type;
-	short	id;
-	XMFLOAT3 pos;
-};
-constexpr short CS_COLLECT_PACKET_SIZE = sizeof(CS_COLLECT_PACKET);
-
-struct CS_CHANGEWEAPON_PACKET {
-	unsigned char size;
-	char	type;
-	short	id;
-	short cur_weaponType;
-};
-constexpr short CS_CHANGEWEAPON_PACKET_SIZE = sizeof(CS_CHANGEWEAPON_PACKET);
 
 struct SC_LOGIN_INFO_PACKET {
 	unsigned char size;
@@ -103,11 +74,10 @@ struct SC_MOVE_PLAYER_PACKET {
 	unsigned char size;
 	char	type;
 	short	id;
-	float	HP;
+	short	character_num;
 	XMFLOAT3 Look, Up, Right, Pos;
 	DWORD direction;
-	XMFLOAT3 BulletPos;
-	XMFLOAT3 vel;
+	//unsigned int move_time;
 };
 constexpr short SC_MOVE_PLAYER_PACKET_SIZE = sizeof(SC_MOVE_PLAYER_PACKET);
 
@@ -127,9 +97,7 @@ struct SC_MOVE_MONSTER_PACKET {
 	short	id;
 	XMFLOAT3 Pos;
 	short HP;
-	bool is_alive;
 	short Chasing_PlayerID;
-	XMFLOAT3 BulletPos;
 	unsigned short animation_track; // 애니메이션 타입
 };
 constexpr short SC_MOVE_MONSTER_PACKET_SIZE = sizeof(SC_MOVE_MONSTER_PACKET);

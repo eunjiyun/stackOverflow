@@ -62,6 +62,9 @@
     <ClInclude Include="Camera.h">
       <Filter>소스 파일\Client_File</Filter>
     </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>소스 파일\Client_File</Filter>
+    </ClInclude>
     <ClInclude Include="Shader.h">
       <Filter>소스 파일\Client_File</Filter>
     </ClInclude>
@@ -75,9 +78,6 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="main.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="stdafx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

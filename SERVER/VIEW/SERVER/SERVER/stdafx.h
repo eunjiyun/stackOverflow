@@ -39,21 +39,13 @@ using namespace DirectX::PackedVector;
 #include<vector>
 #include <array>
 #include <set>
-#include <unordered_map>
-#include <unordered_set>
 #include <queue>
-#include <stack>
 #include <algorithm>
 #include <type_traits>
 #include<utility>
-#include <chrono>
-#include <atomic>
-#include <random>
 
 using namespace std;
-using namespace chrono;
 //
-
 
 #define FRAME_BUFFER_WIDTH		640
 #define FRAME_BUFFER_HEIGHT		480
@@ -75,11 +67,11 @@ using namespace chrono;
 #define DIR_LEFT				0x04
 #define DIR_RIGHT				0x08
 #define DIR_RUN					0x10
-#define DIR_JUMP				0x20
-#define DIR_ATTACK				0x40
+#define DIR_ATTACK				0x20
+#define DIR_DIE					0x40//문제
 #define DIR_COLLECT				0x80
 #define DIR_CHANGESTATE			0x100
-#define DIR_DIE					0x200
+
 
 
 
@@ -143,7 +135,7 @@ namespace Vector3
 		return(xmf3Result);
 	}
 
-	inline XMFLOAT3 Subtract(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
+	inline XMFLOAT3 Subtract(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
 	{
 		XMFLOAT3 xmf3Result;
 		XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector1) - XMLoadFloat3(&xmf3Vector2));
@@ -176,10 +168,10 @@ namespace Vector3
 
 	inline float Length(XMFLOAT3& xmf3Vector)
 	{
-		XMFLOAT3 xmf3Result;
-		XMStoreFloat3(&xmf3Result, XMVector3Length(XMLoadFloat3(&xmf3Vector)));
-		return(xmf3Result.x);
-		//return sqrtf(xmf3Vector.x * xmf3Vector.x + xmf3Vector.z * xmf3Vector.z);
+		//XMFLOAT3 xmf3Result;
+		//XMStoreFloat3(&xmf3Result, XMVector3Length(XMLoadFloat3(&xmf3Vector)));
+		//return(xmf3Result.x);
+		return sqrtf(xmf3Vector.x * xmf3Vector.x + xmf3Vector.z * xmf3Vector.z);
 	}
 
 	inline float Angle(XMVECTOR& xmvVector1, XMVECTOR& xmvVector2)
@@ -212,23 +204,9 @@ namespace Vector3
 		return(TransformCoord(xmf3Vector, XMLoadFloat4x4(&xmmtx4x4Matrix)));
 	}
 
-	inline bool Compare2D(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
+	inline bool Compare(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
 	{
 		return (xmf3Vector1.x == xmf3Vector2.x && xmf3Vector1.z == xmf3Vector2.z);
-	}
-
-	inline bool Compare(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
-	{
-		return (xmf3Vector1.x == xmf3Vector2.x && xmf3Vector1.y == xmf3Vector2.y && xmf3Vector1.z == xmf3Vector2.z);
-	}
-	inline XMFLOAT3 RemoveY(XMFLOAT3& xmf3Vector)
-	{
-		xmf3Vector.y = 0;
-		return xmf3Vector;
-	}
-	inline void Print(XMFLOAT3& xmf3Vector)
-	{
-		cout << xmf3Vector.x << ", " << xmf3Vector.y << ", " << xmf3Vector.z << endl;
 	}
 }
 
@@ -318,21 +296,6 @@ namespace Matrix4x4
 //		return(xmf4Result);
 //	}
 //}
-
-struct XMFLOAT3Hash {
-	size_t operator()(const XMFLOAT3& v) const {
-		size_t h1 = std::hash<float>{}(v.x);
-		size_t h2 = std::hash<float>{}(v.y);
-		size_t h3 = std::hash<float>{}(v.z);
-		return h1 ^ (h2 << 1) ^ (h3 << 2);	// XOR 연산자로 해시 합성
-	}
-};
-
-struct XMFLOAT3Equal {
-	bool operator()(const XMFLOAT3& v1, const XMFLOAT3& v2) const {
-		return Vector3::Compare(v1, v2);
-	}
-};
 
 
 

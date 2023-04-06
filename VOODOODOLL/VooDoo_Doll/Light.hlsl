@@ -10,6 +10,9 @@
 #define _WITH_THETA_PHI_CONES
 //#define _WITH_REFLECT
 
+#define MAX_SHADOW_LIGHTS	4 
+#define MAX_SHADOW_MATERIALS		10 
+
 struct LIGHT
 {
 	float4					m_cAmbient;
@@ -35,6 +38,59 @@ cbuffer cbLights : register(b4)
 	int						gnLights;
 };
 
+#define FRAME_BUFFER_WIDTH		640
+#define FRAME_BUFFER_HEIGHT		480
+
+#define _DEPTH_BUFFER_WIDTH		(FRAME_BUFFER_WIDTH * 4)
+#define _DEPTH_BUFFER_HEIGHT	(FRAME_BUFFER_HEIGHT * 4)
+
+#define DELTA_X					(1.0f / _DEPTH_BUFFER_WIDTH)
+#define DELTA_Y					(1.0f / _DEPTH_BUFFER_HEIGHT)
+
+#define MAX_DEPTH_TEXTURES		MAX_SHADOW_LIGHTS
+
+Texture2D<float> gtxtDepthTextures[MAX_DEPTH_TEXTURES] : register(t2);
+SamplerComparisonState gssComparisonPCFShadow : register(s2);
+
+#define _WITH_PCF_FILTERING
+
+float Compute3x3ShadowFactor(float2 uv, float fDepth, uint nIndex)
+{
+	float fPercentLit = gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv, fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(-DELTA_X, 0.0f), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(+DELTA_X, 0.0f), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(0.0f, -DELTA_Y), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(0.0f, +DELTA_Y), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(-DELTA_X, -DELTA_Y), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(-DELTA_X, +DELTA_Y), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(+DELTA_X, -DELTA_Y), fDepth).r;
+	fPercentLit += gtxtDepthTextures[nIndex].SampleCmpLevelZero(gssComparisonPCFShadow, uv + float2(+DELTA_X, +DELTA_Y), fDepth).r;
+
+
+
+	//if (fPercentLit  > 0.0f)
+	//{
+	//	// 광원 영역일 경우
+	//	fPercentLit = 1.0f;
+	//}
+	//else
+	//{
+	//	// 그림자 영역일 경우
+	//	fPercentLit = 0.0f;
+	//}
+
+	//return(fPercentLit );//9
+	return(fPercentLit / 9.0f);//9
+	
+	
+}
+
+float Compute5x5ShadowFactor(float2 uv, float fDepth, uint nIndex)
+{
+	float fPercentLit = 0.0f;
+
+	return(fPercentLit / 25.0f);
+}
 
 float4 DirectionalLight(int nIndex, float3 vNormal, float3 vToCamera)
 {
@@ -123,6 +179,7 @@ float4 SpotLight(int nIndex, float3 vPosition, float3 vNormal, float3 vToCamera)
 		}
 #ifdef _WITH_THETA_PHI_CONES
 		float fAlpha = max(dot(-vToLight, gLights[nIndex].m_vDirection), 0.0f);
+		//float fAlpha = 1.0f;
 		float fSpotFactor = pow(max(((fAlpha - gLights[nIndex].m_fPhi) / (gLights[nIndex].m_fTheta - gLights[nIndex].m_fPhi)), 0.0f), gLights[nIndex].m_fFalloff);
 #else
 		float fSpotFactor = pow(max(dot(-vToLight, gLights[i].m_vDirection), 0.0f), gLights[i].m_fFalloff);
@@ -162,6 +219,130 @@ float4 Lighting(float3 vPosition, float3 vNormal)
 	cColor.a = gMaterial.m_cDiffuse.a;
 
 	return(cColor);
+}
+
+float4 shadowLighting(float3 vPosition, float3 vNormal, bool bShadow, float4 uvs[MAX_SHADOW_LIGHTS])
+{
+	float3 vCameraPosition = float3(gvCameraPosition.x, gvCameraPosition.y, gvCameraPosition.z);
+	float3 vToCamera = normalize(vCameraPosition - vPosition);
+
+	float4 cColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
+	float fShadowFactor = 1.0f;
+	[unroll]
+	for (int i = 0; i < MAX_SHADOW_LIGHTS; i++)
+	{
+		if (gLights[i].m_bEnable)
+		{
+			
+#ifdef _WITH_PCF_FILTERING
+			if (bShadow) fShadowFactor = Compute3x3ShadowFactor(uvs[i].xy / uvs[i].ww, uvs[i].z / uvs[i].w, i);
+#else
+			//if (bShadow) fShadowFactor = gtxtDepthTextures[i].SampleCmpLevelZero(gssComparisonPCFShadow, uvs[i].xy / uvs[i].ww, uvs[i].z / uvs[i].w).r;
+#endif
+
+			//if (gLights[i].m_nType == DIRECTIONAL_LIGHT)
+			//{
+			//	cColor += DirectionalLight(i, vNormal, vToCamera)  * fShadowFactor ;
+			//}
+			//else if (gLights[i].m_nType == POINT_LIGHT)
+			//{
+			//	cColor += PointLight(i, vPosition, vNormal, vToCamera) * fShadowFactor ;
+			//}
+			//else if (gLights[i].m_nType == SPOT_LIGHT)
+			//{
+			//	cColor += SpotLight(i, vPosition, vNormal, vToCamera)  * fShadowFactor ;
+			//	//				cColor += SpotLight(i, vPosition, vNormal, vToCamera);
+			//}
+			//cColor += gLights[i].m_cAmbient * gMaterial.m_cAmbient;
+
+			//for (int i = 0; i < MAX_SHADOW_LIGHTS; ++i)
+			{
+				float4 shadowColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
+				//if (bShadow)
+					//shadowColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+				
+				//if (gLights[i].m_nType != DIRECTIONAL_LIGHT)
+				{
+					//shadowColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+					if (gLights[i].m_nType == DIRECTIONAL_LIGHT)
+					{
+						//shadowColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+						//if (round(fShadowFactor) == 0)
+						if (fShadowFactor == 0.f)
+						//if ((round(fShadowFactor * 10)) == 0)
+						{
+							//cColor += DirectionalLight(i, vNormal, vToCamera) * shadowColor * fShadowFactor;// *float4(1, 1, 1, 1);
+						}
+						else
+						{
+							cColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+							cColor += DirectionalLight(i, vNormal, vToCamera) * shadowColor * fShadowFactor * float4(0, 0, 0, 0);
+						}
+					}
+					else if (gLights[i].m_nType == POINT_LIGHT)
+					{
+						//shadowColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+						//if (round(fShadowFactor) == 0)
+						if (fShadowFactor== 0.f)
+						//if ((round(fShadowFactor * 10)) == 0)
+						{
+							//cColor += PointLight(i, vPosition, vNormal, vToCamera) * shadowColor * fShadowFactor;// *float4(1, 1, 1, 1);
+						}
+						else
+						{
+							cColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+							cColor += PointLight(i, vPosition, vNormal, vToCamera) * shadowColor * fShadowFactor * float4(0, 0, 0, 0);
+						}
+					}
+					else if (gLights[i].m_nType == SPOT_LIGHT)
+					{
+						//shadowColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+						//if (round(fShadowFactor) == 0)
+						if (fShadowFactor== 0.f)
+						//if ((round(fShadowFactor * 10)) == 0)
+						{
+							//cColor += SpotLight(i, vPosition, vNormal, vToCamera) * shadowColor * fShadowFactor;// *float4(1, 1, 1, 1);
+						}
+						else
+						{
+							cColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+							cColor += SpotLight(i, vPosition, vNormal, vToCamera) * shadowColor * fShadowFactor * float4(0, 0, 0, 0);
+						}
+					}
+				}
+				/*else
+				{
+					if (gLights[i].m_nType == DIRECTIONAL_LIGHT)
+					{
+						cColor += DirectionalLight(i, vNormal, vToCamera) *shadowColor* fShadowFactor;
+					}
+					else if (gLights[i].m_nType == POINT_LIGHT)
+					{
+						cColor += PointLight(i, vPosition, vNormal, vToCamera) *shadowColor* fShadowFactor;
+					}
+					else if (gLights[i].m_nType == SPOT_LIGHT)
+					{
+						cColor += SpotLight(i, vPosition, vNormal, vToCamera) *shadowColor* fShadowFactor;
+					}
+				}*/
+				cColor += gLights[i].m_cAmbient * gMaterial.m_cAmbient;
+
+			}
+		}
+	}
+
+	cColor += (gcGlobalAmbientLight * gMaterial.m_cAmbient);
+	//cColor *= -1;
+	cColor.a = gMaterial.m_cDiffuse.a;
+	//cColor *= -1;
+	//cColor.a = 0;
+	//cColor = cColor * float4(0.0f, 0.0f, 0.0f, 1.0f);
+	//cColor = float4(1.0f, 0.0f, 0.0f, gMaterial.m_cDiffuse.a);
+	/*if (round(fShadowFactor) == 0)
+		cColor= float4(1, 1, 1, 1);*/
+	return(cColor);
+	//return(float4(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 

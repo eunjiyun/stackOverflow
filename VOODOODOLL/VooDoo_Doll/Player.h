@@ -5,6 +5,7 @@
 
 #include "Object.h"
 #include "Camera.h"
+#include "Monster.h"
 
 class CPlayer : public CGameObject
 {
@@ -32,11 +33,8 @@ protected:
 	CCamera* m_pCamera = NULL;
 
 public:
-	CGameObject* m_ppBullet;
+	CGameObject** m_ppBullets;
 	int c_id = -1;
-	short cur_weapon = 0;
-	bool alive = true;
-	steady_clock::time_point curTime;
 	float cxDelta, cyDelta, czDelta = 0.0f;
 	CLoadedModelInfo* pAngrybotModels[3];
 	CLoadedModelInfo* tmp = NULL;
@@ -56,7 +54,6 @@ public:
 	void SetMaxVelocityY(float fMaxVelocity) { m_fMaxVelocityY = fMaxVelocity; }
 	void SetVelocity(const XMFLOAT3& xmf3Velocity) { m_xmf3Velocity = xmf3Velocity; }
 	void SetPosition(const XMFLOAT3& xmf3Position) { Move(XMFLOAT3(xmf3Position.x - m_xmf3Position.x, xmf3Position.y - m_xmf3Position.y, xmf3Position.z - m_xmf3Position.z), false); }
-	void SetPosition2D(const float& _x, const float& _z) { Move(XMFLOAT3(_x - m_xmf3Position.x, 0, _z - m_xmf3Position.z), false); }
 
 	void SetScale(XMFLOAT3& xmf3Scale) { m_xmf3Scale = xmf3Scale; }
 
@@ -80,7 +77,7 @@ public:
 	
 
 	virtual void Update(float fTimeElapsed);
-	virtual void otherPlayerUpdate(float fTimeElapsed) {};
+	virtual void otherPlayerUpdate() {};
 
 	virtual void OnPlayerUpdateCallback(float fTimeElapsed) { }
 	void SetPlayerUpdatedContext(LPVOID pContext) { m_pPlayerUpdatedContext = pContext; }
@@ -96,7 +93,7 @@ public:
 
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed) { return(NULL); }
 	virtual void OnPrepareRender();
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera = NULL);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState,bool shadow, CCamera* pCamera = NULL);
 
 
 	//230205
@@ -133,7 +130,7 @@ public:
 	virtual void Move(ULONG nDirection, float fDistance, bool bVelocity = false);
 
 	virtual void Update(float fTimeElapsed);
-	virtual void otherPlayerUpdate(float fTimeElapsed);
+	virtual void otherPlayerUpdate();
 
 	virtual void playerAttack(int, CGameObject*, CGameObject***);
 	virtual void playerRun();

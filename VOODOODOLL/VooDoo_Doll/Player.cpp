@@ -71,8 +71,7 @@ void CPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 		if (dwDirection & DIR_LEFT)
 			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Right, -fDistance);
 
-		if (dwDirection & DIR_JUMP && onFloor) {
-			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, fDistance * 10); onFloor = false; }
+		//if (dwDirection & DIR_UP) xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, fDistance);
 		//if (dwDirection & DIR_DOWN) xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, -fDistance);
 
 
@@ -157,9 +156,7 @@ void CPlayer::Update(float fTimeElapsed)
 {
 	if (onAttack || onCollect || onDie) SetMaxVelocityXZ(0.0f);
 	else if (onRun) SetMaxVelocityXZ(100.0f);
-	else SetMaxVelocityXZ(10.0f);
-
-	m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, m_xmf3Gravity);
+	else SetMaxVelocityXZ(100.0f);
 
 	float fLength = sqrtf(m_xmf3Velocity.x * m_xmf3Velocity.x + m_xmf3Velocity.z * m_xmf3Velocity.z);
 	float fMaxVelocityXZ = m_fMaxVelocityXZ;
@@ -169,16 +166,37 @@ void CPlayer::Update(float fTimeElapsed)
 		m_xmf3Velocity.z *= (fMaxVelocityXZ / fLength);
 	}
 
-	float fMaxVelocityY = m_fMaxVelocityY;
-	fLength = sqrtf(m_xmf3Velocity.y * m_xmf3Velocity.y);
-	if (fLength > m_fMaxVelocityY) m_xmf3Velocity.y *= (fMaxVelocityY / fLength);
+	//float fMaxVelocityY = m_fMaxVelocityY;
+	//fLength = sqrtf(m_xmf3Velocity.y * m_xmf3Velocity.y);
+	//if (fLength > m_fMaxVelocityY) m_xmf3Velocity.y *= (fMaxVelocityY / fLength);
 
 
 	XMFLOAT3 xmf3Velocity = Vector3::ScalarProduct(m_xmf3Velocity, fTimeElapsed, false);
 
-
 	Rotate(cxDelta, cyDelta, czDelta);
 	Move(xmf3Velocity, false);
+	// 
+	//if (m_pPlayerUpdatedContext) OnPlayerUpdateCallback(fTimeElapsed);
+
+	//if (m_xmf3Position.y > SECOND_FLOOR && m_xmf3Position.y < FLOOR_SIZE * 2)
+	//{
+	//	if (m_xmf3Position.y < SECOND_FLOOR)
+	//	{
+	//		XMFLOAT3 xmf3PlayerVelocity = GetVelocity();
+	//		xmf3PlayerVelocity.y = 0.0f;
+	//		SetVelocity(xmf3PlayerVelocity);
+	//		m_xmf3Position.y = SECOND_FLOOR;
+	//		SetPosition(m_xmf3Position);
+	//	}
+	//}
+	//else if (m_xmf3Position.y < FIRST_FLOOR)
+	//{
+	//	XMFLOAT3 xmf3PlayerVelocity = GetVelocity();
+	//	xmf3PlayerVelocity.y = 0.0f;
+	//	SetVelocity(xmf3PlayerVelocity);
+	//	m_xmf3Position.y = FIRST_FLOOR;
+	//	SetPosition(m_xmf3Position);
+	//}
 
 }
 
@@ -254,11 +272,12 @@ void CPlayer::OnPrepareRender()
 	m_xmf4x4ToParent = Matrix4x4::Multiply(XMMatrixScaling(m_xmf3Scale.x, m_xmf3Scale.y, m_xmf3Scale.z), m_xmf4x4ToParent);
 }
 
-void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera)
+void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState,bool shadow, CCamera* pCamera)
 {
 	DWORD nCameraMode = (pCamera) ? pCamera->GetMode() : 0x00;
 	//cout << c_id << endl;
-	if (nCameraMode == THIRD_PERSON_CAMERA) CGameObject::Render(pd3dCommandList, m_pd3dGraphicsRootSignature, m_pd3dPipelineState, pCamera);
+	if (nCameraMode == THIRD_PERSON_CAMERA || true == shadow)
+		CGameObject::Render(pd3dCommandList, m_pd3dGraphicsRootSignature, m_pd3dPipelineState, pCamera);
 }
 
 void CPlayer::OnUpdateTransform()
@@ -271,7 +290,7 @@ void CPlayer::OnUpdateTransform()
 
 void CPlayer::UpdateBoundingBox()
 {
-	obBox.Center = m_xmf3Position;
+	m_xmOOBB.Center = m_xmf3Position;
 }
 
 void CPlayer::boundingAnimate(float fElapsedTime)
@@ -305,9 +324,10 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 
 
 	pAngrybotModels[0] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body26.bin", NULL, 7);
+	//pAngrybotModels[0] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo19.bin", NULL, 1);
 	pAngrybotModels[1] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body27.bin", NULL, 7);
-	pAngrybotModels[2] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body28.bin", NULL, 7);
-
+	pAngrybotModels[2] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body.bin", NULL, 7);
+	
 	for (int i = 0; i < 3; i++) {
 		AnimationControllers[i] = new CAnimationController(pd3dDevice, pd3dCommandList, 6, pAngrybotModels[i]);
 	}
@@ -327,19 +347,6 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		SetChild(pAngrybotModels[2]->m_pModelRootObject, true);
 		m_pSkinnedAnimationController = AnimationControllers[2];
 	}
-
-
-	CLoadedModelInfo* arrow = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Warlock_weapon2.bin", NULL, 7);
-	m_ppBullet = new CBulletObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, arrow, 1,1);
-	m_ppBullet->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-	m_ppBullet->SetScale(2.f, 2.f, 2.f);
-
-	m_ppBullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
-	m_ppBullet->SetRotationSpeed(360.0f);
-	m_ppBullet->SetMovingSpeed(120.0f);
-	m_ppBullet->SetPosition(XMFLOAT3(5000,5000,5000));
-	if (arrow) delete arrow;
-
 
 	m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
 	m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
@@ -373,8 +380,7 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
-	m_xmOOBB = BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 4, 10));
-	obBox = BoundingOrientedBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 4, 10), XMFLOAT4(0, 0, 0,1) );
+	m_xmOOBB = BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 3, 10));
 
 	SetScale(XMFLOAT3(1.0f, 1.0f, 1.0f));
 }
@@ -403,7 +409,7 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		break;
 	case SPACESHIP_CAMERA:
 		SetFriction(125.0f);
-		SetGravity(XMFLOAT3(0.0f, -15.0f, 0.0f));
+		SetGravity(XMFLOAT3(0.0f, 0.0f, 0.0f));
 		SetMaxVelocityXZ(300.0f);
 		SetMaxVelocityY(400.0f);
 		m_pCamera = OnChangeCamera(SPACESHIP_CAMERA, nCurrentCameraMode);
@@ -414,9 +420,9 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		m_pCamera->SetScissorRect(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT);
 		break;
 	case THIRD_PERSON_CAMERA:
-		SetFriction(50.0f);
-		SetGravity(XMFLOAT3(0.0f, -5.0f, 0.0f));
-		SetMaxVelocityXZ(10.0f);
+		SetFriction(20.0f);
+		SetGravity(XMFLOAT3(0.0f, -250.0f, 0.0f));
+		SetMaxVelocityXZ(100.0f);
 		SetMaxVelocityY(100.0f);
 		m_pCamera = OnChangeCamera(THIRD_PERSON_CAMERA, nCurrentCameraMode);
 		m_pCamera->SetTimeLag(0.25f);
@@ -437,6 +443,15 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 
 void CTerrainPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 {
+	//m_pSkinnedAnimationController->SetTrackEnable(0, false);
+
+	//m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//m_pSkinnedAnimationController->SetTrackEnable(2, false);
+	//m_pSkinnedAnimationController->SetTrackEnable(3, false);
+	//m_pSkinnedAnimationController->SetTrackEnable(4, false);
+	//m_pSkinnedAnimationController->SetTrackEnable(5, false);
+
+
 	CPlayer::Move(dwDirection, fDistance, bUpdateVelocity);
 }
 
@@ -452,6 +467,8 @@ void CTerrainPlayer::playerAttack(int whatPlayer, CGameObject* pLockedObject, CG
 		m_pSkinnedAnimationController->SetTrackEnable(3, false);
 		m_pSkinnedAnimationController->SetTrackEnable(4, false);
 		m_pSkinnedAnimationController->SetTrackEnable(5, false);
+
+		//cout << "2번 트루" << endl;
 
 		if (2 == whatPlayer)
 		{
@@ -496,6 +513,8 @@ void CTerrainPlayer::playerRun()
 		m_pSkinnedAnimationController->SetTrackEnable(3, true);
 		m_pSkinnedAnimationController->SetTrackEnable(4, false);
 		m_pSkinnedAnimationController->SetTrackEnable(5, false);
+
+		cout << "3번 트루" << endl;
 	}
 }
 void CTerrainPlayer::playerDie()
@@ -508,6 +527,8 @@ void CTerrainPlayer::playerDie()
 		m_pSkinnedAnimationController->SetTrackEnable(3, false);
 		m_pSkinnedAnimationController->SetTrackEnable(4, true);
 		m_pSkinnedAnimationController->SetTrackEnable(5, false);
+
+		//cout << "4번 트루" << endl;
 	}
 }
 
@@ -522,6 +543,8 @@ void CTerrainPlayer::playerCollect()
 		m_pSkinnedAnimationController->SetTrackEnable(3, false);
 		m_pSkinnedAnimationController->SetTrackEnable(4, false);
 		m_pSkinnedAnimationController->SetTrackEnable(5, true);
+
+		//cout << "5번 트루" << endl;
 	}
 }
 
@@ -529,12 +552,6 @@ void CTerrainPlayer::playerCollect()
 void CTerrainPlayer::Update(float fTimeElapsed)
 {
 	CPlayer::Update(fTimeElapsed);
-}
-
-void CTerrainPlayer::otherPlayerUpdate(float fTimeElapsed)//0226
-{
-	XMFLOAT3 xmf3Velocity = Vector3::ScalarProduct(m_xmf3Velocity, fTimeElapsed, false);
-	CPlayer::Move(xmf3Velocity, false);
 
 	//if (m_pSkinnedAnimationController)
 	//{
@@ -542,15 +559,12 @@ void CTerrainPlayer::otherPlayerUpdate(float fTimeElapsed)//0226
 	//	if (::IsZero(fLength))//플레이어 좌표에 변화가 없을 때
 	//	{
 	//		if (false == m_pSkinnedAnimationController->m_pAnimationTracks[2].m_bEnable &&
-	//			false == m_pSkinnedAnimationController->m_pAnimationTracks[3].m_bEnable &&
+	//			false ==onRun && //run 키를 떼면 idle 모드로 전환
 	//			false == m_pSkinnedAnimationController->m_pAnimationTracks[4].m_bEnable &&
 	//			false == m_pSkinnedAnimationController->m_pAnimationTracks[5].m_bEnable)
 	//			//if (!onAttack && !onRun && !onDie &&!onCollect)//플레이어가 공격 모드가 아닐 때
 	//		{
-
-	//			if (false == m_pSkinnedAnimationController->m_pAnimationTracks[0].m_bEnable)
-	//				m_pSkinnedAnimationController->SetTrackEnable(0, true);
-
+	//			m_pSkinnedAnimationController->SetTrackEnable(0, true);
 	//			m_pSkinnedAnimationController->SetTrackEnable(1, false);
 	//			m_pSkinnedAnimationController->SetTrackEnable(2, false);
 	//			m_pSkinnedAnimationController->SetTrackEnable(3, false);
@@ -558,7 +572,40 @@ void CTerrainPlayer::otherPlayerUpdate(float fTimeElapsed)//0226
 	//			m_pSkinnedAnimationController->SetTrackEnable(5, false);
 
 	//			m_pSkinnedAnimationController->SetTrackPosition(1, 0.0f);
+
+	//			//cout << "0번 트루" << endl;
 	//		}
 	//	}
 	//}
+}
+
+void CTerrainPlayer::otherPlayerUpdate()//0226
+{
+	if (m_pSkinnedAnimationController)
+	{
+		float fLength = sqrtf(m_xmf3Velocity.x * m_xmf3Velocity.x + m_xmf3Velocity.z * m_xmf3Velocity.z);
+		if (::IsZero(fLength))//플레이어 좌표에 변화가 없을 때
+		{
+			if (false == m_pSkinnedAnimationController->m_pAnimationTracks[2].m_bEnable &&
+				false == m_pSkinnedAnimationController->m_pAnimationTracks[3].m_bEnable &&
+				false == m_pSkinnedAnimationController->m_pAnimationTracks[4].m_bEnable &&
+				false == m_pSkinnedAnimationController->m_pAnimationTracks[5].m_bEnable)
+				//if (!onAttack && !onRun && !onDie &&!onCollect)//플레이어가 공격 모드가 아닐 때
+			{
+
+				if (false == m_pSkinnedAnimationController->m_pAnimationTracks[0].m_bEnable)
+					m_pSkinnedAnimationController->SetTrackEnable(0, true);
+
+				m_pSkinnedAnimationController->SetTrackEnable(1, false);
+				m_pSkinnedAnimationController->SetTrackEnable(2, false);
+				m_pSkinnedAnimationController->SetTrackEnable(3, false);
+				m_pSkinnedAnimationController->SetTrackEnable(4, false);
+				m_pSkinnedAnimationController->SetTrackEnable(5, false);
+
+				m_pSkinnedAnimationController->SetTrackPosition(1, 0.0f);
+
+				//cout << "0번 트루00000" << endl;
+			}
+		}
+	}
 }

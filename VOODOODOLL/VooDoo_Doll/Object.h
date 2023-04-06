@@ -12,11 +12,10 @@
 #define DIR_LEFT				0x04
 #define DIR_RIGHT				0x08
 #define DIR_RUN					0x10
-#define DIR_JUMP				0x20
-#define DIR_ATTACK				0x40
+#define DIR_ATTACK				0x20
+#define DIR_DIE					0x40
 #define DIR_COLLECT				0x80
 #define DIR_CHANGESTATE			0x100
-#define DIR_DIE					0x200
 
 class CShader;
 class CStandardShader;
@@ -122,6 +121,7 @@ public:
 	static CShader* m_pStandardShader;//
 	static CShader* m_pSkinnedAnimationShader;//
 	CTexture** m_ppTextures = NULL; //0:Albedo, 1:Specular, 2:Metallic, 3:Normal, 4:Emission, 5:DetailAlbedo, 6:DetailNormal //
+	UINT							m_nReflection = 0;
 
 	XMFLOAT4						m_xmf4AlbedoColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);//
 	XMFLOAT4						m_xmf4EmissiveColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);//
@@ -171,6 +171,8 @@ public:
 	void SetAlbedoColor(XMFLOAT4 xmf4Color) { m_xmf4AlbedoColor = xmf4Color; }
 	void SetEmissionColor(XMFLOAT4 xmf4Color) { m_xmf4EmissionColor = xmf4Color; }
 	//
+
+	void SetReflection(UINT nReflection) { m_nReflection = nReflection; }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +261,7 @@ public:
 	CAnimationTrack() {}
 	CAnimationTrack(const CAnimationTrack& other);
 	~CAnimationTrack();
-	
+
 public:
 	BOOL 							m_bEnable = true;//
 	float 							m_fSpeed = 1.0f;//
@@ -283,7 +285,7 @@ public:
 	void SetWeight(float fWeight) { m_fWeight = fWeight; }
 
 	void SetPosition(float fPosition) { m_fPosition = fPosition; }
-	float UpdatePosition(float fTrackPosition, float fTrackElapsedTime, float fAnimationLength);
+	float UpdatePosition(float fTrackPosition, float fTrackElapsedTime, float fAnimationLength, bool* onAttack, bool* onCollect, bool* dieOnce, int trackNum);
 
 	void SetCallbackKeys(int nCallbackKeys);
 	void SetCallbackKey(int nKeyIndex, float fTime, void* pData);
@@ -352,7 +354,7 @@ public:
 	void SetCallbackKey(int nAnimationTrack, int nKeyIndex, float fTime, void* pData);
 	void SetAnimationCallbackHandler(int nAnimationTrack, CAnimationCallbackHandler* pCallbackHandler);
 
-	void AdvanceTime(float fElapsedTime, short curTrack, CGameObject* pRootGameObject);
+	void AdvanceTime(float fElapsedTime, CGameObject* pRootGameObject, bool* onAttack, bool* onCollect, bool* dieOnce);
 
 	void SetRootMotion(bool bRootMotion) { m_bRootMotion = bRootMotion; }
 
@@ -396,17 +398,15 @@ public:
 
 	ID3D12DescriptorHeap* m_pd3dCbvSrvDescriptorHeap = NULL;//
 	BoundingBox			m_xmOOBB = BoundingBox();// //
-	BoundingOrientedBox			obBox = BoundingOrientedBox();
 
 
 	bool						m_bActive = false;//
 	bool onAttack = false;//
 	bool onRun = false;//
-	bool onDie = false;
+	bool onDie = false;//
 	bool onCollect = false;//
-	bool onAct = false;
 	bool dieOnce = false;//
-	bool onFloor = false;
+	//bool onChange = false;
 	int plWhat = 1;
 
 	int c_id = -1;//monster id //
@@ -421,6 +421,8 @@ public:
 	CGameObject* m_pLockedObject = NULL;//
 	float						m_fMovingSpeed = 0.0f;//
 	float						m_fRotationSpeed = 0.0f;//
+
+	CMaterial* m_pMaterial = NULL;
 
 public:
 	void AddRef();
@@ -440,10 +442,10 @@ public:
 	virtual void BuildMaterials(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) { }
 
 	virtual void OnPrepareAnimate() { }
-	virtual void Animate(float fTimeElapsed,bool onPlayer);
+	virtual void Animate(float fTimeElapsed);
 
 	virtual void OnPrepareRender() { }
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera = NULL);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState,bool shadow, CCamera* pCamera = NULL);
 	void lightRender(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera = NULL);
 	void onPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState);
 	virtual void OnLateUpdate() { }
@@ -461,10 +463,6 @@ public:
 	XMFLOAT3 GetLook();
 	XMFLOAT3 GetUp();
 	XMFLOAT3 GetRight();
-
-	void SetLook(XMFLOAT3 _in);
-	void SetUp(XMFLOAT3 _in);
-	void SetRight(XMFLOAT3 _in);
 
 	XMFLOAT3 GetToParentPosition();
 	void Move(XMFLOAT3 xmf3Offset);
@@ -517,6 +515,8 @@ public:
 	void SetMovingSpeed(float fSpeed) { m_fMovingSpeed = fSpeed; }
 	virtual void Reset() {}
 
+	void SetMaterial(CMaterial* pMaterial);
+
 	void SetFirePosition(XMFLOAT3 xmf3FirePosition)
 	{
 		m_xmf3FirePosition = xmf3FirePosition;
@@ -563,7 +563,7 @@ public:
 class CBulletObject : public CGameObject
 {
 public:
-	CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CLoadedModelInfo* pModel, int nAnimationTracks,int chooseObj);
+	CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CLoadedModelInfo* pModel, int nAnimationTracks,int);
 	virtual ~CBulletObject() {}
 
 public:
@@ -584,3 +584,21 @@ public:
 	virtual void Reset();
 };
 //
+
+
+class CRotatingObject : public CGameObject
+{
+public:
+	CRotatingObject(int nMeshes = 1);
+	virtual ~CRotatingObject();
+
+private:
+	XMFLOAT3					m_xmf3RotationAxis;
+	float						m_fRotationSpeed;
+
+public:
+	void SetRotationSpeed(float fRotationSpeed) { m_fRotationSpeed = fRotationSpeed; }
+	void SetRotationAxis(XMFLOAT3 xmf3RotationAxis) { m_xmf3RotationAxis = xmf3RotationAxis; }
+
+	virtual void Animate(float fTimeElapsed);
+};

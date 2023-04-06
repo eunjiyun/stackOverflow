@@ -22,10 +22,6 @@
 
 #include <fstream>
 #include <vector>
-#include <chrono>
-#include <DirectXMath.h>
-#include< cstdlib >
-
 
 //consol
 #ifdef UNICODE
@@ -36,7 +32,6 @@
 
 #include<iostream>
 using namespace std;
-using namespace chrono;
 //
 
 #include <WS2tcpip.h>
@@ -49,8 +44,8 @@ using namespace chrono;
 #include <DirectXPackedVector.h>
 #include <DirectXColors.h>
 #include <DirectXCollision.h>
+
 #include <Mmsystem.h>
-#include <array>
 
 #ifdef _DEBUG
 #include <dxgidebug.h>
@@ -84,8 +79,17 @@ extern HINSTANCE						ghAppInstance;
 #define ROOT_PARAMETER_CAMERA			0
 #define ROOT_PARAMETER_PLAYER			1
 #define ROOT_PARAMETER_LIGHT			2
-#define ROOT_PARAMETER_BONEOFFSET       10
-#define ROOT_PARAMETER_BONETRANSFORM    11
+#define ROOT_PARAMETER_BONEOFFSET       11
+#define ROOT_PARAMETER_BONETRANSFORM    12
+
+#define MAX_SHADOW_LIGHTS				4 
+#define MAX_DEPTH_TEXTURES		MAX_SHADOW_LIGHTS
+
+#define _PLANE_WIDTH			1024
+#define _PLANE_HEIGHT			1024
+
+#define _DEPTH_BUFFER_WIDTH		(FRAME_BUFFER_WIDTH * 4)
+#define _DEPTH_BUFFER_HEIGHT	(FRAME_BUFFER_HEIGHT * 4)
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")
@@ -116,8 +120,6 @@ extern float ReadFloatFromFile(FILE* pInFile);
 #define ANIMATION_TYPE_ONCE				0
 #define ANIMATION_TYPE_LOOP				1
 #define ANIMATION_TYPE_PINGPONG			2
-#define ANIMATION_TYPE_DEAD				3
-
 
 #define ANIMATION_CALLBACK_EPSILON		0.00165f
 
@@ -171,15 +173,7 @@ namespace Vector3
 		return(xmf3Result);
 	}
 
-	inline XMFLOAT3 Subtract2D(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
-	{
-		XMFLOAT3 xmf3Result;
-		XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector1) - XMLoadFloat3(&xmf3Vector2));
-		xmf3Result.y = 0;
-		return(xmf3Result);
-	}
-
-	inline XMFLOAT3 Subtract(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
+	inline XMFLOAT3 Subtract(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
 	{
 		XMFLOAT3 xmf3Result;
 		XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector1) - XMLoadFloat3(&xmf3Vector2));
@@ -262,32 +256,9 @@ namespace Vector3
 		return(TransformCoord(xmf3Vector, XMLoadFloat4x4(&xmmtx4x4Matrix)));
 	}
 
-	inline bool Compare2D(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
-	{
-		return (xmf3Vector1.x == xmf3Vector2.x && xmf3Vector1.z == xmf3Vector2.z);
-	}
-
 	inline bool Compare(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
 	{
-		return (xmf3Vector1.x == xmf3Vector2.x && xmf3Vector1.y == xmf3Vector2.y && xmf3Vector1.z == xmf3Vector2.z);
-	}
-
-	inline float getDegreeFromTwoVectors(XMFLOAT3 a, XMFLOAT3 b)
-	{
-		double cosAngle = acosf(Vector3::DotProduct(a, b) / (Vector3::Length(a) * Vector3::Length(b)));
-		cosAngle *= (180.f / 3.141592654);
-		cosAngle = (a.x * b.z - a.z * b.x > 0) ? cosAngle : -cosAngle;
-		return (float)cosAngle;
-	}
-
-	inline XMFLOAT3 RemoveY(XMFLOAT3 xmf3Vector)
-	{
-		xmf3Vector.y = 0;
-		return xmf3Vector;
-	}
-	inline void Print(XMFLOAT3& xmf3Vector)
-	{
-		cout << xmf3Vector.x << ", " << xmf3Vector.y << ", " << xmf3Vector.z << endl;
+		return (xmf3Vector1.x == xmf3Vector2.x && xmf3Vector1.z == xmf3Vector2.z);
 	}
 }
 

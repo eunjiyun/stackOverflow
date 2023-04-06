@@ -29,7 +29,7 @@ class OVER_EXP {
 public:
 	WSAOVERLAPPED _over;
 	WSABUF _wsabuf;
-	char _send_buf[BUF_SIZE]{};
+	char _send_buf[BUF_SIZE];
 	COMP_TYPE _comp_type;
 	OVER_EXP()
 	{

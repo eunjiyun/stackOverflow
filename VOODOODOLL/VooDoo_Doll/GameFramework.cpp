@@ -465,20 +465,10 @@ void CGameFramework::BuildObjects()
 		m_pStage->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 	}
 
-	for (int i = 0; i < 6; i++) {
-		for (int j = 0; j < 5; j++) {
-			pMonsterModel[i].push(
-				CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), binFileNames[i], NULL, i + 1));
-		}
-	}
-
-	for (int i = 0; i < 6; i++) {
-		MagiciansHat.push(CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Warlock_cap.bin", NULL, 7));
-	}
-
 
 #ifdef _WITH_TERRAIN_PLAYER
 	m_pPlayer = new CTerrainPlayer(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), 1);
+	//m_pPlayer = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), 3, 5);
 #else
 	CAirplanePlayer* pPlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL);
 	pPlayer->SetPosition(XMFLOAT3(425.0f, 240.0f, 640.0f));
@@ -491,41 +481,203 @@ void CGameFramework::BuildObjects()
 	/*m_pPlayer->m_pSkinnedAnimationController->SetTrackEnable(1, false);
 	m_pPlayer->m_pSkinnedAnimationController->SetTrackEnable(0, true);*/
 
-	Players.push_back(m_pPlayer);
+	/*m_nShaders = 1;
+	m_ppShaders = new CShader * [m_nShaders];*/
+
+	
+
+
 	for (int i = 0; i < 3; i++) {
 		CTerrainPlayer* pAirplanePlayer = new CTerrainPlayer(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), 1);
 		Players.push_back(pAirplanePlayer);
 	}
 
-	//23.02.22
-	//m_ppBullets = new CGameObject * [BULLETS];
+	pMonsterModel = new CLoadedModelInfo * [9];
 
-	//CLoadedModelInfo* arrow = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Warlock_weapon2.bin", NULL, 7);
-	//m_ppBullets[0] = new CBulletObject(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), arrow, 1,1);
-	//m_ppBullets[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-	//m_ppBullets[0]->SetScale(1.1f, 1.1f, 1.1f);
+	pMonsterModel[0] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo19.bin", NULL, 1);
 
-	//m_ppCap = new CGameObject * [BULLETS];
-	//CLoadedModelInfo* magicCap = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Warlock_cap.bin", NULL, 7);
-	//m_ppCap[0] = new CBulletObject(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), magicCap, 1, 2);
-	//m_ppCap[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-	//m_ppCap[0]->SetScale(0.8f, 0.8f, 0.8f);//Warlock_cap
+	pMonsterModel[1] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo23.bin", NULL, 2);
 
-	////for (int i = 0; i < BULLETS; i++)
-	//for (int i = 0; i < 1; i++)
-	//{
-	//	m_ppBullets[i]->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
-	//	m_ppBullets[i]->SetRotationSpeed(360.0f);
-	//	m_ppBullets[i]->SetMovingSpeed(120.0f);
-	//	m_ppBullets[i]->SetActive(false);
+	pMonsterModel[6] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo23.bin", NULL, 2);
+	pMonsterModel[7] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo23.bin", NULL, 2);
+	pMonsterModel[8] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo23.bin", NULL, 2);
+
+	pMonsterModel[2] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo31.bin", NULL, 3);
+
+	pMonsterModel[3] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo41.bin", NULL, 4);
+	pMonsterModel[4] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo52.bin", NULL, 5);
+	pMonsterModel[5] = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo62.bin", NULL, 6);
+
+	//monModel= CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo31.bin", NULL, 3);
+
+
+	m_nHierarchicalGameObjects = 5;
+	m_ppHierarchicalGameObjects = new CGameObject * [m_nHierarchicalGameObjects];
+
+	//for (int i = 0; i < 13; i++) {
+
+	//	if (3 > i)
+	//	{
+	//		CLoadedModelInfo* pMonsterModel3 = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo31.bin", NULL, 3);//ÀÚÆøÇÏ°Ô
+	//		m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel3, 2, 3);//±Í½Å
+	//		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	//		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+	//		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+	//		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//		m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
+	//		if (pMonsterModel3) delete pMonsterModel3;
+
+	//		Monsters.push_back(m_ppHierarchicalGameObjects[0]);
+	//	}
+	//	else if (8 < i)
+	//	{
+	//		CLoadedModelInfo* pMonsterModel2 = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo23.bin", NULL, 2);
+	//		m_ppHierarchicalGameObjects[1] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel2, 3, 2);//»À´Ù±Í ´Ù¸®
+	//		m_ppHierarchicalGameObjects[1]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	//		m_ppHierarchicalGameObjects[1]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+	//		m_ppHierarchicalGameObjects[1]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+	//		m_ppHierarchicalGameObjects[1]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+	//		m_ppHierarchicalGameObjects[1]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//		m_ppHierarchicalGameObjects[1]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+	//		m_ppHierarchicalGameObjects[1]->SetScale(1.0f, 1.0f, 1.0f);
+	//		if (pMonsterModel2) delete pMonsterModel2;
+
+	//		Monsters.push_back(m_ppHierarchicalGameObjects[1]);
+	//	}
+	//	else if (9< i)
+	//	{
+	//		CLoadedModelInfo* pMonsterModel5 = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo52.bin", NULL, 5);
+	//		m_ppHierarchicalGameObjects[2] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel5, 3, 5);//¸¶¹ý»ç
+	//		m_ppHierarchicalGameObjects[2]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	//		m_ppHierarchicalGameObjects[2]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+	//		m_ppHierarchicalGameObjects[2]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+	//		m_ppHierarchicalGameObjects[2]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+	//		m_ppHierarchicalGameObjects[2]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//		m_ppHierarchicalGameObjects[2]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+	//		m_ppHierarchicalGameObjects[2]->SetScale(1.0f, 1.0f, 1.0f);
+	//		if (pMonsterModel5) delete pMonsterModel5;
+
+	//		Monsters.push_back(m_ppHierarchicalGameObjects[2]);
+	//	}
+	//	else if (10 < i)
+	//	{
+	//		CLoadedModelInfo* pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo19.bin", NULL, 1);
+	//		m_ppHierarchicalGameObjects[3] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel, 3, 1);//¼Õ¿¡ Ä®
+	//		m_ppHierarchicalGameObjects[3]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	//		m_ppHierarchicalGameObjects[3]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+	//		m_ppHierarchicalGameObjects[3]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+	//		m_ppHierarchicalGameObjects[3]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+	//		m_ppHierarchicalGameObjects[3]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//		m_ppHierarchicalGameObjects[3]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+	//		m_ppHierarchicalGameObjects[3]->SetScale(1.0f, 1.0f, 1.0f);
+	//		if (pMonsterModel) delete pMonsterModel;
+
+	//		Monsters.push_back(m_ppHierarchicalGameObjects[3]);
+	//	}
+	//	else if (11 < i)
+	//	{
+	//		CLoadedModelInfo* pMonsterModel6 = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo62.bin", NULL, 6);//
+	//		m_ppHierarchicalGameObjects[4] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel6, 3, 6);
+	//		m_ppHierarchicalGameObjects[4]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	//		m_ppHierarchicalGameObjects[4]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+	//		m_ppHierarchicalGameObjects[4]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+	//		m_ppHierarchicalGameObjects[4]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+	//		m_ppHierarchicalGameObjects[4]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//		m_ppHierarchicalGameObjects[4]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+	//		m_ppHierarchicalGameObjects[4]->SetScale(1.0f, 1.0f, 1.0f);
+	//		if (pMonsterModel6) delete pMonsterModel6;
+
+	//		Monsters.push_back(m_ppHierarchicalGameObjects[4]);
+	//	}
+	//	else if (13 < i)
+	//	{
+	//		CLoadedModelInfo* pMonsterModel4 = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Voodoo41.bin", NULL, 4);//
+	//		m_ppHierarchicalGameObjects[5] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel4, 5, 4);//¼Õ¿¡ ¹Ù´Ã
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackAnimationSet(4, 4);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackEnable(2, false);//¹Ù´Ã ÈÖµÎ¸£±â µý°É·Î
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackEnable(3, false);
+	//		m_ppHierarchicalGameObjects[5]->m_pSkinnedAnimationController->SetTrackEnable(4, false);//area attack? È­Àç¹ß»ý
+	//		m_ppHierarchicalGameObjects[5]->SetScale(1.0f, 1.0f, 1.0f);
+	//		if (pMonsterModel4) delete pMonsterModel4;
+
+	//		Monsters.push_back(m_ppHierarchicalGameObjects[5]);
+	//	}
 	//}
 
-	//if (arrow) delete arrow;
-	//if (magicCap) delete magicCap;
+
+	//23.02.22
+	m_ppBullets = new CGameObject * [BULLETS];
+
+	CLoadedModelInfo* arrow = CGameObject::LoadGeometryAndAnimationFromFile(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), "Model/Warlock_weapon2.bin", NULL, 7);
+	m_ppBullets[0] = new CBulletObject(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), arrow, 1,1);
+	m_ppBullets[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+	m_ppBullets[0]->SetScale(1.1f, 1.1f, 1.1f);
+
+	//for (int i = 0; i < BULLETS; i++)
+	for (int i = 0; i < 1; i++)
+	{
+		m_ppBullets[i]->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+		m_ppBullets[i]->SetRotationSpeed(360.0f);
+		m_ppBullets[i]->SetMovingSpeed(120.0f);
+		m_ppBullets[i]->SetActive(false);
+	}
+
+	if (arrow) delete arrow;
+
+	m_pLights = m_pStage->m_pLights;
+
+	CBoxShader* pBoxShader = new CBoxShader();
+	//pBoxShader->CreateShader(m_pd3dDevice, m_pStage->GetGraphicsRootSignature(), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, 5, NULL, DXGI_FORMAT_D32_FLOAT);
+	//pBoxShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, 5, NULL, DXGI_FORMAT_D24_UNORM_S8_UINT);
+	//pBoxShader->BuildObjects(m_pd3dDevice, m_pd3dCommandList, 2, NULL);//0328
+	/*DXGI_FORMAT pdxgiRtvFormats[5] = { DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32_FLOAT };
+	CMaterial::PrepareShaders(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), 5, pdxgiRtvFormats, DXGI_FORMAT_D32_FLOAT);*/
+	//m_xmBoundingBox = pBoxShader->CalculateBoundingBox();
+	//m_ppShaders[0] = pBoxShader;
+	
+	
+	//pBoxShader->m_nShdowObjects = 1;
+	//pBoxShader->m_ppObjects = new CGameObject * [pBoxShader->m_nShdowObjects];
+	//pBoxShader->m_ppObjects[0] = m_pPlayer;
+	////pBoxShader->m_ppObjects[0]->SetPosition(0, 4, 0);
+	////pBoxShader->m_ppObjects[0]->SetPosition(0.0f, 4.0f, 0.0f);
 
 
-	m_pStage->BuildDefaultLightsAndMaterials();//ÀÎÇüÀÌ ±î¸Ä°Ô Ãâ·Â
+	//m_pStage->m_pDepthRenderPlShader = new CDepthRenderShader(pBoxShader, m_pLights);//0328
+	//DXGI_FORMAT RtvFormats[5] = { DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT };
+	//m_pStage->m_pDepthRenderPlShader->CreateShader(m_pd3dDevice, m_pStage->GetGraphicsRootSignature(), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, 5, RtvFormats, DXGI_FORMAT_D32_FLOAT);
+	//m_pStage->m_pDepthRenderPlShader->BuildObjects(m_pd3dDevice, m_pd3dCommandList, NULL);
 
+	//m_pStage->m_pShadowPlShader = new CShadowMapShader(pBoxShader);
+	//m_pStage->m_pShadowPlShader->CreateShader(m_pd3dDevice, m_pStage->GetGraphicsRootSignature(), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, 5, NULL, DXGI_FORMAT_D32_FLOAT);//pipelinestate null
+	//m_pStage->m_pShadowPlShader->BuildObjects(m_pd3dDevice, m_pd3dCommandList, m_pStage->m_pDepthRenderPlShader->GetDepthTexture());
+
+
+	m_pStage->m_nShaders = 1;
+	m_pStage->m_ppShaders = new CShader * [m_pStage->m_nShaders];
+	pBoxShader->BuildObjects(m_pd3dDevice, m_pd3dCommandList, 2, NULL);//0328
+	//pBoxShader->m_nShdowObjects = 1;
+	//pBoxShader->m_ppObjects = new CGameObject * [pBoxShader->m_nShdowObjects];
+	pBoxShader->m_ppObjects[1] = m_pPlayer;
+	//pBoxShader->m_ppObjects[0]->SetPosition(0, 4, 0);
+	//pBoxShader->m_ppObjects[0]->SetPosition(0.0f, 4.0f, 0.0f);
+	m_pStage->m_ppShaders[0] = pBoxShader;
+
+
+	m_pStage->m_pDepthRenderShader = new CDepthRenderShader(pBoxShader, m_pLights);//0328
+	DXGI_FORMAT RtvFormats[5] = { DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT,DXGI_FORMAT_R32_FLOAT };
+	m_pStage->m_pDepthRenderShader->CreateShader(m_pd3dDevice, m_pStage->GetGraphicsRootSignature(), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, 5, RtvFormats, DXGI_FORMAT_D32_FLOAT);
+	m_pStage->m_pDepthRenderShader->BuildObjects(m_pd3dDevice, m_pd3dCommandList, NULL);
+
+	m_pStage->m_pShadowShader = new CShadowMapShader(pBoxShader);
+	m_pStage->m_pShadowShader->CreateShader(m_pd3dDevice, m_pStage->GetGraphicsRootSignature(), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, 5, NULL, DXGI_FORMAT_D32_FLOAT);//pipelinestate null
+	m_pStage->m_pShadowShader->BuildObjects(m_pd3dDevice, m_pd3dCommandList, m_pStage->m_pDepthRenderShader->GetDepthTexture());
 
 	m_pd3dCommandList->Close();
 	ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
@@ -536,6 +688,8 @@ void CGameFramework::BuildObjects()
 	if (m_pStage) m_pStage->ReleaseUploadBuffers();
 	if (m_pPlayer) m_pPlayer->ReleaseUploadBuffers();
 
+	/*for (int i = 0; i < m_nHierarchicalGameObjects; i++)
+		m_ppHierarchicalGameObjects[i]->ReleaseUploadBuffers();*/
 
 
 	m_GameTimer.Reset();
@@ -572,7 +726,6 @@ void CGameFramework::CreateOtherPlayer(int p_id, XMFLOAT3 Pos, XMFLOAT3 Look, XM
 			player->SetLookVector(Look);
 			player->SetUpVector(Up);
 			player->SetRightVector(Right);
-			player->curTime = high_resolution_clock::now();
 			cout << player->c_id << endl;
 			break;
 		}
@@ -581,135 +734,243 @@ void CGameFramework::CreateOtherPlayer(int p_id, XMFLOAT3 Pos, XMFLOAT3 Look, XM
 void CGameFramework::SummonMonster(int npc_id, int type, XMFLOAT3 Pos)
 {
 	// ÀÌ ÇÔ¼ö¿¡¼­ ¸ó½ºÅÍ¸¦ µ¿Àû ÇÒ´çÇÏ¿© ¼ÒÈ¯ÇÔ
-	if (pMonsterModel[type].empty()) {
-		cout << "»ý¼º½ÇÆÐ\n";
-		return;
-	}
-	CMonster* Mon = nullptr;
-	CLoadedModelInfo* Hat = nullptr;
-	CLoadedModelInfo* Model = pMonsterModel[type].front();
-	pMonsterModel[type].pop();
+
 	switch (type)
 	{
-	case 0://0326
-		Mon = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Model, 4); //¼Õ¿¡ Ä®	
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
-
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(1, true);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(3, false);
-
-		Mon->SetScale(1.0f, 1.0f, 1.0f);
-		break;
 	case 1:
-		Mon = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Model, 4);//»À´Ù±Í ´Ù¸®
+		if (0 == npc_id)
+			m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[2], 2, 3);//±Í½Å
+		else
+		{
+			CLoadedModelInfo* temp = new CLoadedModelInfo(*pMonsterModel[2]);
+			m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), temp, 2, 3);//±Í½Å
+		}
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
 
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
-
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(1, true);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(3, false);
-
-		Mon->SetScale(1.0f, 1.0f, 1.0f);
+		//if (0 == npc_id)
+		//	m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[4], 3, 5);//±Í½Å
+		//else
+		//{
+		//	CLoadedModelInfo* temp = new CLoadedModelInfo(*pMonsterModel[4]);
+		//	m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), temp, 3, 5);//±Í½Å
+		//}
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+		//	m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
 		break;
 	case 2:
-		Mon = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Model, 2);//±Í½Å
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		if (0 == npc_id)
+			m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[1], 3, 2);//»À´Ù±Í ´Ù¸®
+		else
+		{
+			/*CLoadedModelInfo* temp2 = new CLoadedModelInfo(*pMonsterModel[1]);
+			m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), temp2, 3, 2);*/
 
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(0, true);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(1, false);
-		
-		Mon->SetScale(1.0f, 1.0f, 1.0f);
+			if (1 == npc_id)
+				m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[6], 3, 2);//»À´Ù±Í ´Ù¸®
+			else if (2 == npc_id)
+				m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[7], 3, 2);//»À´Ù±Í ´Ù¸®
+
+			//m_ppHierarchicalGameObjects[0]->SetChild(temp2->m_pModelRootObject, true);
+		}
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, false);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, true);
+		m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
 		break;
-	case 3:
-		Mon = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Model, 5);//¼Õ¿¡ ¹Ù´Ã
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(4, 4);
-
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(0, true);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(1, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(3, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(4, false);
-	
-		Mon->SetScale(1.0f, 1.0f, 1.0f);
-		break;
-	case 4:
-		Mon = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Model, 4); // ¸¶¼ú»ç
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
-
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(1, true);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(3, false);
-
-		Hat = MagiciansHat.front();
-		MagiciansHat.pop();
-		Mon->m_ppHat = new CBulletObject(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Hat, 1, 2);
-		Mon->m_ppHat->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_ppHat->SetScale(0.8f, 0.8f, 0.8f);
-
-		Mon->SetScale(1.0f, 1.0f, 1.0f);
-		break;
-	case 5:
-		Mon = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), Model, 4);// ¸Ó¸®¿¡ ¹Ù´Ã
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
-		Mon->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
-
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(1, true);
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(2, false);//¹Ù´Ã ÈÖµÎ¸£±â µý°É·Î
-		Mon->m_pSkinnedAnimationController->SetTrackEnable(3, false);
-		
-		Mon->SetScale(1.0f, 1.0f, 1.0f);
-		break;
+		//case 3:
+		//	m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[4], 3, 5);//¸¶¹ý»ç
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+		//	m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
+		//	break;
+		//case 4:
+		//	m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[0], 3, 1);//¼Õ¿¡ Ä®
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+		//	m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
+		//	break;
+		//case 5:
+		//	m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[5], 3, 6);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(2, false);
+		//	m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
+		//	break;
+		//case 6:
+		//	m_ppHierarchicalGameObjects[0] = new CMonster(m_pd3dDevice, m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), pMonsterModel[3], 5, 4);//¼Õ¿¡ ¹Ù´Ã
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(4, 4);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(2, false);//¹Ù´Ã ÈÖµÎ¸£±â µý°É·Î
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(3, false);
+		//	m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(4, false);//area attack? È­Àç¹ß»ý
+		//	m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);
+		//	break;
 	default:
 		break;
 	}
-	if (Mon != nullptr)
+
+	//for(int i{};i<5;++i)
+		//if(m_ppHierarchicalGameObjects[i])
+			//Monsters.push_back(m_ppHierarchicalGameObjects[i]);
+	//Monsters.push_back(m_ppHierarchicalGameObjects[0]);
+
+	//if (1 == type)
 	{
-		Mon->c_id = npc_id;
-		Mon->npc_type = type;
-		Mon->m_xmOOBB = BoundingBox(Pos, XMFLOAT3(5, 3, 5));
-		Mon->SetPosition(Pos);
-		Monsters.push_back(Mon);
+		/*m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(0, false);
+		m_ppHierarchicalGameObjects[0]->m_pSkinnedAnimationController->SetTrackEnable(1, true);
+		m_ppHierarchicalGameObjects[0]->SetScale(1.0f, 1.0f, 1.0f);*/
+
+
+		Monsters.push_back(m_ppHierarchicalGameObjects[0]);
+	}
+
+	for (auto& monster : Monsters)
+	{
+		if (monster->c_id < 0) {
+			monster->c_id = npc_id;
+			monster->npc_type = type;
+			monster->SetPosition(Pos);
+			break;
+		}
 	}
 }
 
+
+void CGameFramework::ProcessInput()
+{
+	static UCHAR pKeysBuffer[256];
+	bool bProcessedByStage = false;
+	if (GetKeyboardState(pKeysBuffer) && m_pStage) bProcessedByStage = m_pStage->ProcessInput(pKeysBuffer);
+	if (!bProcessedByStage)
+	{
+		float cxDelta = 0.0f, cyDelta = 0.0f;
+		POINT ptCursorPos;
+		if (GetCapture() == m_hWnd)
+		{
+			SetCursor(NULL);
+			GetCursorPos(&ptCursorPos);
+			cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x) / 3.0f;
+			cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y) / 3.0f;
+			SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
+		}
+
+		DWORD dwDirection = 0;
+
+
+		if (pKeysBuffer[0x57] & 0xF0) dwDirection |= DIR_FORWARD;//w
+		if (pKeysBuffer[0x53] & 0xF0) dwDirection |= DIR_BACKWARD;//s
+		if (pKeysBuffer[0x41] & 0xF0) dwDirection |= DIR_LEFT;//a
+		if (pKeysBuffer[0x44] & 0xF0) dwDirection |= DIR_RIGHT;//d
+
+		//23.02.20
+		if (pKeysBuffer[0x51] & 0xF0) dwDirection = DIR_CHANGESTATE;//q change
+		if (pKeysBuffer[0x5A] & 0xF0) dwDirection |= DIR_ATTACK;//z Attack
+		if (pKeysBuffer[0x58] & 0xF0) dwDirection |= DIR_RUN;//x run
+		if (pKeysBuffer[0x4B] & 0xF0) dwDirection |= DIR_DIE;//k die
+		if (pKeysBuffer[0x43] & 0xF0) dwDirection |= DIR_COLLECT;//c collect
+		//
+
+		if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
+		{
+			if (cxDelta || cyDelta)
+			{
+				if (pKeysBuffer[VK_RBUTTON] & 0xF0)
+				{
+					m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
+
+					//if (true == onRotate)
+					//{
+						//m_ppBullets[0]->Rotate(cyDelta , 0.0f, -cxDelta );
+						//onRotate = false;
+					//}
+				}
+				else
+				{
+					m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
+
+					//if(true)
+					//m_ppBullets[0]->Rotate(cyDelta*3, cxDelta*3, 0.0f);
+				}
+			}
+			if (dwDirection)
+			{
+				m_pPlayer->Move(dwDirection, 7.0f, true);
+
+				m_pPlayer->playerAttack(whatPlayer, m_pLockedObject, &m_ppBullets);
+				m_pLockedObject = NULL;
+
+				m_pPlayer->playerRun();
+				m_pPlayer->playerDie();
+				m_pPlayer->playerCollect();
+			}
+		}
+	}
+
+	m_pPlayer->Update(m_GameTimer.GetTimeElapsed());
+	//m_pPlayer->otherPlayerUpdate(m_GameTimer.GetTimeElapsed());
+
+	for (auto& player : Players) {
+		if (player->c_id > -1)
+		{
+			//player->Update(m_GameTimer.GetTimeElapsed());
+			player->otherPlayerUpdate();
+		}
+
+	}
+	/*for (auto& monster : Monsters) {
+		if (monster->c_id > -1)
+		{
+			monster->otherPlayerUpdate();
+		}
+
+	}*/
+}
 
 void CGameFramework::AnimateObjects(float fTimeElapsed)
 {
 	if (m_pStage) m_pStage->AnimateObjects(fTimeElapsed);
 
+	m_pPlayer->Animate(fTimeElapsed);
+
+	if(m_pStage->m_ppShaders)
+		m_pStage->m_ppShaders[0]->AnimateObjects(fTimeElapsed);
+
 	for (auto& player : Players)
-	{
-		if (player->c_id > -1) {
-			player->boundingAnimate(fTimeElapsed);
-			player->Animate(fTimeElapsed, true);
-		}
-	}
+		if (player->c_id > -1)
+			player->Animate(fTimeElapsed);
 	for (auto& monster : Monsters)
-	{
 		if (monster->c_id > -1)
-			monster->Animate(fTimeElapsed, false);
-	}
+			monster->Animate(fTimeElapsed);
 }
 
 void CGameFramework::WaitForGpuComplete()
@@ -744,23 +1005,31 @@ void CGameFramework::FrameAdvance()
 {
 	m_GameTimer.Tick(30.0f);
 
+	//ProcessInput();
 	float fTimeElapsed = m_GameTimer.GetTimeElapsed();
 
-	for (auto& player : Players) {
-		if (player->c_id > -1) {
-			player->Update(fTimeElapsed);
 
-			m_pStage->CheckMoveObjectsCollisions(fTimeElapsed, player, Monsters, Players);
-			m_pStage->CheckObjectByObjectCollisions(fTimeElapsed, player);
+	m_pPlayer->Update(fTimeElapsed);
 
-			player->Deceleration(fTimeElapsed);
-		}
-	}
+	m_pStage->CheckObjectByObjectCollisions(fTimeElapsed);
+
+	m_pPlayer->Deceleration(fTimeElapsed);
+
+	//if(2==whatPlayer&&true== m_pPlayer->onAttack)
+	m_ppBullets[0]->Animate(fTimeElapsed);//ÃÑ¾Ë ¾÷µ«
 
 	AnimateObjects(fTimeElapsed);
 
 	HRESULT hResult = m_pd3dCommandAllocator->Reset();
 	hResult = m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+
+	m_pStage->OnPrepareRender(m_pd3dCommandList);
+	//m_pStage->OnPreRender(m_pd3dCommandList, m_pShadowLights);//0328
+	m_pStage->OnPreRender(m_pd3dCommandList, m_pLights, m_pStage->m_pd3dCbvSrvDescriptorHeap,1);//0328
+	/*m_pDepthRenderShader->m_pd3dCbvSrvDescriptorHeap = m_pStage->m_pd3dCbvSrvDescriptorHeap;
+	m_pDepthRenderShader->PrepareShadowMap(m_pd3dCommandList, m_pStage->m_pLights);*/
+	m_pStage->OnPreRender(m_pd3dCommandList, m_pLights, m_pStage->m_pd3dCbvSrvDescriptorHeap, 2);//0328
+	m_pStage->OnPreRender(m_pd3dCommandList, m_pLights, m_pStage->m_pd3dCbvSrvDescriptorHeap, 3);//0328
 
 	D3D12_RESOURCE_BARRIER d3dResourceBarrier;
 	::ZeroMemory(&d3dResourceBarrier, sizeof(D3D12_RESOURCE_BARRIER));
@@ -800,19 +1069,18 @@ void CGameFramework::FrameAdvance()
 		}
 	}*/
 
+	m_pStage->whatPlayer = whatPlayer;
 
 
 
 	for (auto& player : Players) {
 		if (player->c_id > -1) {
 			player->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
-			player->m_ppBullet->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
 		}
 	}
 	for (const auto& monster : Monsters) {
 		if (monster->c_id > -1) {
 			monster->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
-			monster->m_ppHat->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
 		}
 	}
 
@@ -820,8 +1088,28 @@ void CGameFramework::FrameAdvance()
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 #endif
 
-	//m_ppBullets[0]->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
-	//m_ppBullets[0]->SetPosition(m_pPlayer->GetPosition());
+	//m_pPlayer->SetPosition(XMFLOAT3(300, 0, 0));
+	if (m_pPlayer)
+	{
+		//m_pPlayer->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
+
+		/*if (m_pShadowShader)
+			m_pShadowShader->Render(m_pd3dCommandList, m_pCamera);*/
+		/*if (m_pStage->m_pShadowPlShader)
+			m_pStage->m_pShadowPlShader->Render(m_pd3dCommandList, m_pCamera);*/
+		
+		if (2 == whatPlayer)//±Ã¼ö ¸ðµåÀÏ ¶§ ÃÑ¾Ë ·»´õ
+		{
+			//for (int i = 0; i < BULLETS; ++i)
+			for (int i = 0; i < 1; ++i)
+			{
+				if (m_ppBullets[i]->m_bActive)
+				{
+					m_ppBullets[i]->Render(m_pd3dCommandList, m_pStage->GetGraphicsRootSignature(), NULL, m_pCamera);
+				}
+			}
+		}
+	}
 
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -859,5 +1147,47 @@ void CGameFramework::FrameAdvance()
 	::SetWindowText(m_hWnd, m_pszFrameRate);
 }
 
+void CGameFramework::changePlayerForm(CPlayer** oldPlayer)//¹ÞÀ» ÇÃ·¹ÀÌ¾î, ÇÒ´çÇÒ ÇÃ·¹ÀÌ¾î
+{
+	int choosePlayer = 0;
 
+	choosePlayer = otherPlayerWhat;
+	p1Change = false;
+
+	if (1 == choosePlayer)
+	{
+		(*oldPlayer)->tmp = (*oldPlayer)->pAngrybotModels[0];
+
+		(*oldPlayer)->SetChild((*oldPlayer)->tmp->m_pModelRootObject, true);
+
+		(*oldPlayer)->m_pSkinnedAnimationController = (*oldPlayer)->AnimationControllers[0];
+
+		if (true == changePlayerMode)
+			changePlayerMode = false;
+	}
+	else if (2 == choosePlayer)
+	{
+		(*oldPlayer)->tmp = (*oldPlayer)->pAngrybotModels[1];
+
+		(*oldPlayer)->SetChild((*oldPlayer)->tmp->m_pModelRootObject, true);
+
+		(*oldPlayer)->m_pSkinnedAnimationController = (*oldPlayer)->AnimationControllers[1];
+
+		if (true == changePlayerMode)
+			changePlayerMode = false;
+	}
+	else if (3 == choosePlayer)
+	{
+		(*oldPlayer)->tmp = (*oldPlayer)->pAngrybotModels[2];
+
+		(*oldPlayer)->SetChild((*oldPlayer)->tmp->m_pModelRootObject, true);
+
+		(*oldPlayer)->m_pSkinnedAnimationController = (*oldPlayer)->AnimationControllers[2];
+
+		if (true == changePlayerMode)
+			changePlayerMode = false;
+	}
+
+	m_pCamera = m_pPlayer->GetCamera();
+}
 
