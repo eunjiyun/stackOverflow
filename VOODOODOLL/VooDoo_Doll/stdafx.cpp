@@ -1,6 +1,3 @@
-// stdafx.cpp : Ç¥ÁØ Æ÷ÇÔ ÆÄÀÏ¸¸ µé¾î ÀÖ´Â ¼Ò½º ÆÄÀÏÀÔ´Ï´Ù.
-// VooDoo_Doll.pch´Â ¹Ì¸® ÄÄÆÄÀÏµÈ Çì´õ°¡ µË´Ï´Ù.
-// stdafx.obj¿¡´Â ¹Ì¸® ÄÄÆÄÀÏµÈ Çü½Ä Á¤º¸°¡ Æ÷ÇÔµË´Ï´Ù.
 
 #include "stdafx.h"
 
@@ -185,7 +182,7 @@ ID3D12Resource* CreateTextureResourceFromDDSFile(ID3D12Device* pd3dDevice, ID3D1
 
 		D3D12_RESOURCE_DESC d3dUploadResourceDesc;
 		::ZeroMemory(&d3dUploadResourceDesc, sizeof(D3D12_RESOURCE_DESC));
-		d3dUploadResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; //Upload Heap¿¡´Â ÅØ½ºÃÄ¸¦ »ý¼ºÇÒ ¼ö ¾øÀ½
+		d3dUploadResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; //Upload Heapï¿½ï¿½ï¿½ï¿½ ï¿½Ø½ï¿½ï¿½Ä¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		d3dUploadResourceDesc.Alignment = 0;
 		d3dUploadResourceDesc.Width = nBytes;
 		d3dUploadResourceDesc.Height = 1;
@@ -197,6 +194,7 @@ ID3D12Resource* CreateTextureResourceFromDDSFile(ID3D12Device* pd3dDevice, ID3D1
 		d3dUploadResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		d3dUploadResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
+
 		pd3dDevice->CreateCommittedResource(&d3dHeapPropertiesDesc, D3D12_HEAP_FLAG_NONE, &d3dUploadResourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, __uuidof(ID3D12Resource), (void**)ppd3dUploadBuffer);
 
 		//UINT nSubResources = (UINT)vSubresources.size();
@@ -204,7 +202,9 @@ ID3D12Resource* CreateTextureResourceFromDDSFile(ID3D12Device* pd3dDevice, ID3D1
 		//for (UINT i = 0; i < nSubResources; i++) pd3dSubResourceData[i] = vSubresources.at(i);
 
 		//	std::vector<D3D12_SUBRESOURCE_DATA>::pointer ptr = &vSubresources[0];
+
 		::UpdateSubresources(pd3dCommandList, pd3dTexture, *ppd3dUploadBuffer, 0, 0, nSubResources, &vSubresources[0]);
+
 
 		D3D12_RESOURCE_BARRIER d3dResourceBarrier;
 		::ZeroMemory(&d3dResourceBarrier, sizeof(D3D12_RESOURCE_BARRIER));
@@ -273,7 +273,7 @@ ID3D12Resource* CreateTextureResourceFromWICFile(ID3D12Device* pd3dDevice, ID3D1
 
 	D3D12_RESOURCE_DESC d3dResourceDesc;
 	::ZeroMemory(&d3dResourceDesc, sizeof(D3D12_RESOURCE_DESC));
-	d3dResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; //Upload Heap¿¡´Â ÅØ½ºÃÄ¸¦ »ý¼ºÇÒ ¼ö ¾øÀ½
+	d3dResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; //Upload Heapï¿½ï¿½ï¿½ï¿½ ï¿½Ø½ï¿½ï¿½Ä¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	d3dResourceDesc.Alignment = 0;
 	d3dResourceDesc.Width = nBytes;
 	d3dResourceDesc.Height = 1;
@@ -306,12 +306,12 @@ ID3D12Resource* CreateTextureResourceFromWICFile(ID3D12Device* pd3dDevice, ID3D1
 CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, int* pnGameObjects)//0220
 {
 	FILE* pFile = NULL;
+
 	::fopen_s(&pFile, pstrFileName, "rb");
 	::rewind(pFile);
 
-	char		strAlbedoTextureName[64] = { '\0' };
+
 	char		strEmissionTextureName[64] = { '\0' };
-	BYTE	nAlbedoTextureStrLength = 0;
 	BYTE	nEmissionTextureStrLength = 0;
 
 	char pstrToken1[64] = { '\0' };
@@ -322,6 +322,8 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 	BYTE nStrLength = 0, nObjectNameLength = 0;
 	UINT nReads = 0, nMaterials = 0;
 	size_t nConverted = 0;
+
+	int		iObjectID = 0;
 	int		nTextureNumber = 0;
 
 	nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
@@ -353,11 +355,13 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
 		nReads = (UINT)::fread(pstrToken4, sizeof(char), nStrLength, pFile); //"<Materials>:"
 		nReads = (UINT)::fread(&nMaterials, sizeof(int), 1, pFile);
-
 		pGameObject = new CGameObject(nMaterials);
 		strcpy_s(pGameObject->m_pstrName, 64, pstrGameObjectName);
 
+		pGameObject->m_ppMaterials = new CMaterial * [nMaterials];
 
+		for (unsigned m = 0; m < nMaterials; m++) 
+			pGameObject->m_ppMaterials[m] = NULL;
 
 		CGameObject* pObjectFound = NULL;
 		for (int j = 0; j < i; j++)
@@ -391,9 +395,27 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 			nReads = (UINT)::fread(pstrToken5, sizeof(char), nStrLength, pFile); //"<<AlbedoTextureName>:"
 			if (0 == strcmp(pstrToken5, "<AlbedoTextureName>:"))
 			{
+				char		strAlbedoTextureName[64] = { '\0' };
+				BYTE	nAlbedoTextureStrLength = 0;
+				size_t		nConverted = 0;
+
 				nReads = (UINT)::fread(&nAlbedoTextureStrLength, sizeof(BYTE), 1, pFile);
 				nReads = (UINT)::fread(strAlbedoTextureName, sizeof(char), nAlbedoTextureStrLength, pFile);
-				//pGameObject->SetAlbedoTexture(k, pd3dDevice, pd3dCommandList, strAlbedoTextureName, nTextureNumber);
+
+
+				pGameObject->m_ppMaterials[k] = new CMaterial(1);
+
+				char			pstrFilePath1[64] = { '\0' };
+				TCHAR	pwstrTextureName[64] = { '/0' };
+
+				strcpy_s(pstrFilePath1, 64, "Models/Texture/");
+				strcpy_s(pstrFilePath1 + 15, 64 - 15, strAlbedoTextureName);
+				strcpy_s(pstrFilePath1 + 15 + strlen(strAlbedoTextureName), 64 - 15 - strlen(strAlbedoTextureName), ".dds");
+				mbstowcs_s(&nConverted, pGameObject->m_ppMaterials[k]->m_ppstrTextureNames[0], pstrFilePath1, _TRUNCATE);
+
+
+				//cout << pGameObject->m_pstrName << "	|	" << strAlbedoTextureName << endl;
+
 			}
 
 
@@ -408,24 +430,24 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 			{
 				nReads = (UINT)::fread(&nEmissionTextureStrLength, sizeof(BYTE), 1, pFile);
 				nReads = (UINT)::fread(strEmissionTextureName, sizeof(char), nEmissionTextureStrLength, pFile);
-				cout << pstrToken6 << strEmissionTextureName << endl << endl;
+				//cout << pstrToken6 << strEmissionTextureName << endl << endl;
 			}
 		}
 
 		nReads = (UINT)::fread(&pGameObject->m_xmf4x4World, sizeof(float), 16, pFile);
 
-		if (!pObjectFound)
-		{
-			strcpy_s(pstrFilePath, 64, "Models/");
-			strcpy_s(pstrFilePath + 7, 64 - 7, pstrGameObjectName);
-			strcpy_s(pstrFilePath + 7 + nObjectNameLength, 64 - 7 - nObjectNameLength, ".bin");
+		strcpy_s(pstrFilePath, 64, "Models/");
+		strcpy_s(pstrFilePath + 7, 64 - 7, pstrGameObjectName);
+		strcpy_s(pstrFilePath + 7 + nObjectNameLength, 64 - 7 - nObjectNameLength, ".bin");
+		pGameObject->m_iObjID = iObjectID;
+		CMesh* pMesh = new CMesh(pd3dDevice, pd3dCommandList, pstrFilePath);
 
-			CMesh* pMesh = new CMesh(pd3dDevice, pd3dCommandList, pstrFilePath);
+		//cout << i<<"	:>	"<<pGameObject->m_pstrName << endl;
 
-			pGameObject->SetMesh(0, pMesh);
-		}
-		
-		//cout << "Name: " << pGameObject->m_pstrName << " : ";
+		pGameObject->SetMesh(0, pMesh);
+
+
+		//cout << "Name: " << pGameObject->m_pstrName << " : "m_pstrTextureName;
 
 
 		/*printf("Orientation: (%f, %f, %f, %f)\n", pGameObject->m_ppMeshes[0]->OBBox.Orientation.x,
@@ -436,6 +458,7 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 		//
 		
 		ppGameObjects[i] = pGameObject;
+		++iObjectID;
 	}
 
 

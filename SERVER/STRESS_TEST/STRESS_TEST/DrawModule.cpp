@@ -15,6 +15,8 @@
 #include <gl\glu.h>			// Header File For The GLu32 Library
 #include <atomic>
 #include <memory>
+#include <iostream>
+using namespace std;
 //#include <gl\glaux.h>		// Header File For The Glaux Library
 
 #pragma comment (lib, "opengl32.lib")
@@ -127,8 +129,10 @@ int InitGL(GLvoid)										// All Setup For OpenGL Goes Here
 int DrawGLScene(GLvoid)									// Here's Where We Do All The Drawing
 {
 	int size = 0;
+	int size_2 = 0;
 	float* points = nullptr;
-	GetPointCloud(&size, &points);
+	float* points_2 = nullptr;
+	GetPointCloud(&size, &size_2, &points, &points_2);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear Screen And Depth Buffer
 	glLoadIdentity();									// Reset The Current Modelview Matrix
@@ -137,9 +141,13 @@ int DrawGLScene(GLvoid)									// Here's Where We Do All The Drawing
 	glColor3f(1, 1, 0);
 	// Position The Text On The Screen
 	glRasterPos2f(0.0f, 0.00f);
-	glPrint("STRESS TEST [%d]", (int)active_clients);	// Print GL Text To The Screen
+	glPrint("Current User : [%d]", (int)active_clients);	// Print GL Text To The Screen
 	glRasterPos2f(0.0f, 0.05f);
-	glPrint("Delay : %dms", global_delay);
+	glPrint("Current Monster : [%d]", (int)active_monsters);	// Print GL Text To The Screen
+	glRasterPos2f(0.0f, 0.10f);
+	glPrint("Player Delay : %dms", player_delay);
+	glRasterPos2f(0.0f, 0.15f);
+	glPrint("Monster Delay : %dms", monster_delay - 100);
 
 	glColor3f(1, 1, 1);
 
@@ -149,8 +157,19 @@ int DrawGLScene(GLvoid)									// Here's Where We Do All The Drawing
 	{
 		float x, y, z;
 
-		x = points[i * 2] / 200.0f - 1.25f;
-		y = 1.25f - points[i * 2 + 1] / 200.0f;
+		x = points[i * 2] / 2300.f - 1.25f;
+		y = 1.25f - points[i * 2 + 1] / 2300.f;
+		z = -1.0f;
+		glVertex3f(x, y, z);
+	}
+
+	glColor3f(1, 0, 0);
+	for (int i = 0; i < size_2; i++)
+	{
+		float x, y, z;
+
+		x = points_2[i * 2] / 2300.f - 1.25f;
+		y = 1.25f - points_2[i * 2 + 1] / 2300.f;
 		z = -1.0f;
 		glVertex3f(x, y, z);
 	}
@@ -446,7 +465,7 @@ int WINAPI WinMain(HINSTANCE	hInstance,			// Instance
 	fullscreen = FALSE;							// Windowed Mode
 
 	// Create Our OpenGL Window
-	if (!CreateGLWindow(L"Stress Test Client", 640, 480, 16, fullscreen))
+	if (!CreateGLWindow(L"Stress Test Client", 1280, 960, 16, fullscreen))
 	{
 		return 0;									// Quit If Window Was Not Created
 	}

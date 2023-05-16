@@ -19,11 +19,11 @@ using namespace chrono;
 
 extern HWND		hWnd;
 
-const static int MAX_TEST = 10000;
+const static int MAX_TEST = 9000;
 const static int MAX_CLIENTS = MAX_TEST * 2;
 const static int INVALID_ID = -1;
-const static int MAX_PACKET_SIZE = 255;
-const static int MAX_BUFF_SIZE = 255;
+const static int MAX_PACKET_SIZE = 512;
+const static int MAX_BUFF_SIZE = 512;
 
 #pragma comment (lib, "ws2_32.lib")
 
@@ -38,9 +38,8 @@ high_resolution_clock::time_point last_connect_time;
 struct OverlappedEx {
 	WSAOVERLAPPED over;
 	WSABUF wsabuf;
-	unsigned char IOCP_buf[MAX_BUFF_SIZE];
+	char IOCP_buf[MAX_BUFF_SIZE];
 	OPTYPE event_type;
-	int event_target;
 };
 
 struct CLIENT {
@@ -54,20 +53,31 @@ struct CLIENT {
 	int prev_packet_data;
 	int curr_packet_size;
 	high_resolution_clock::time_point last_move_time;
+	high_resolution_clock::time_point last_recved_time;
+};
+
+struct MONSTER {
+	XMFLOAT3 pos;
+	atomic_bool connected;
+	high_resolution_clock::time_point last_recved_time;
 };
 
 array<int, MAX_CLIENTS> client_map;
 array<CLIENT, MAX_CLIENTS> g_clients;
+array<MONSTER, MAX_CLIENTS> g_monsters;
 atomic_int num_connections;
 atomic_int client_to_close;
 atomic_int active_clients;
+atomic_int active_monsters;
 
-int			global_delay;				// ms단위, 1000이 넘으면 클라이언트 증가 종료
+int			player_delay;
+int			monster_delay;				
 
 vector <thread*> worker_threads;
 thread test_thread;
 
 float point_cloud[MAX_TEST * 2];
+float point_cloud_2[MAX_TEST * 2];
 
 // 나중에 NPC까지 추가 확장 용
 struct ALIEN {
@@ -124,21 +134,19 @@ void ProcessPacket(int ci, unsigned char packet[])
 	switch (packet[1]) {
 	case SC_MOVE_PLAYER: {
 		SC_MOVE_PLAYER_PACKET* move_packet = reinterpret_cast<SC_MOVE_PLAYER_PACKET*>(packet);
-		//if (move_packet->id == 0)
-		//	cout << "ID : " << move_packet->id << ", Pos: " << move_packet->Pos.x << "," << move_packet->Pos.y << "," << move_packet->Pos.z << endl;
 		if (move_packet->id < MAX_CLIENTS) {
 			int my_id = client_map[move_packet->id];
+			if (move_packet->HP <= 0)
+				g_clients[my_id].connected = false;
 			if (-1 != my_id) {
 				g_clients[my_id].pos = move_packet->Pos;
 			}
-			//if (ci == my_id) {
-			//	if (0 != move_packet->move_time) {
-			//		auto d_ms = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch()).count() - move_packet->move_time;
-
-			//		if (global_delay < d_ms) global_delay++;
-			//		else if (global_delay > d_ms) global_delay--;
-			//	}
-			//}
+			if (ci == my_id) {
+				auto d_ms = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch()).count() - move_packet->move_time;
+				if (player_delay < d_ms) player_delay++;
+				else if (player_delay > d_ms) player_delay--;
+				if (move_packet->HP <= 0) { DisconnectClient(my_id); }
+			}
 		}
 	}
 					   break;
@@ -153,7 +161,6 @@ void ProcessPacket(int ci, unsigned char packet[])
 		client_map[login_packet->id] = my_id;
 		g_clients[my_id].id = login_packet->id;
 		g_clients[my_id].pos = login_packet->pos;
-
 		//cs_packet_teleport t_packet;
 		//t_packet.size = sizeof(t_packet);
 		//t_packet.type = CS_TELEPORT;
@@ -162,20 +169,50 @@ void ProcessPacket(int ci, unsigned char packet[])
 	break;
 	case SC_SUMMON_MONSTER:
 	{
-		SC_SUMMON_MONSTER_PACKET* p = reinterpret_cast<SC_SUMMON_MONSTER_PACKET*>(packet);
-		cout << ci << "클라이언트의 화면에" << p->id << "몬스터 소환\n";
+		if (ci % MAX_USER_PER_ROOM == 1) {
+			SC_SUMMON_MONSTER_PACKET* p = reinterpret_cast<SC_SUMMON_MONSTER_PACKET*>(packet);
+			//cout << p->room_num << "몬스터 소환\n";
+			g_monsters[p->room_num * 10 + p->id].connected = true;
+			active_monsters++;
+			g_monsters[p->room_num * 10 + p->id].pos = p->Pos;
+			g_monsters[p->room_num * 10 + p->id].last_recved_time = high_resolution_clock::now();
+		}
 	}
 	break;
 	case SC_MOVE_MONSTER:
+	{
+		if (ci % MAX_USER_PER_ROOM == 1) {
+			SC_MOVE_MONSTER_PACKET* p = reinterpret_cast<SC_MOVE_MONSTER_PACKET*>(packet);
+			if (p->is_alive == false) {
+				g_monsters[p->room_num * 10 + p->id].connected = false;
+				active_monsters--;
+				break;
+			}
+			g_monsters[p->room_num * 10 + p->id].pos = p->Pos;
+
+			auto d_ms = duration_cast<milliseconds>(high_resolution_clock::now() - g_monsters[p->room_num * 10 + p->id].last_recved_time).count();
+			if (monster_delay < d_ms) monster_delay++;
+			else if (monster_delay > d_ms) monster_delay--;
+			g_monsters[p->room_num * 10 + p->id].last_recved_time = high_resolution_clock::now();
+		}
+
 		break;
+	}
 	case CS_ATTACK: {
 		break;
 	}
-	case CS_COLLECT: {
+	case CS_CHANGEWEAPON: {
 		break;
 	}
-	default: MessageBox(hWnd, L"Unknown Packet Type", L"ERROR", 0);
-		while (true);
+	case SC_OPEN_DOOR: {
+		break;
+	}
+	case SC_ROTATE_PLAYER: {
+		break;
+	}
+	default: {
+		break;
+	}
 	}
 }
 
@@ -183,11 +220,11 @@ void Worker_Thread()
 {
 	while (true) {
 		DWORD io_size;
-		unsigned long long ci;
-		OverlappedEx* over;
-		BOOL ret = GetQueuedCompletionStatus(g_hiocp, &io_size, &ci,
-			reinterpret_cast<LPWSAOVERLAPPED*>(&over), INFINITE);
-		// std::cout << "GQCS :";
+		ULONG_PTR ci;
+		//OverlappedEx* over;
+		WSAOVERLAPPED* ex_over = nullptr;
+		BOOL ret = GetQueuedCompletionStatus(g_hiocp, &io_size, &ci, &ex_over, INFINITE);
+		OverlappedEx* over = reinterpret_cast<OverlappedEx*>(ex_over);
 		int client_id = static_cast<int>(ci);
 		if (FALSE == ret) {
 			int err_no = WSAGetLastError();
@@ -203,9 +240,7 @@ void Worker_Thread()
 			continue;
 		}
 		if (OP_RECV == over->event_type) {
-			//std::cout << "RECV from Client :" << ci;
-			//std::cout << "  IO_SIZE : " << io_size << std::endl;
-			unsigned char* buf = g_clients[ci].recv_over.IOCP_buf;
+			char* buf = g_clients[ci].recv_over.IOCP_buf;
 			unsigned psize = g_clients[ci].curr_packet_size;
 			unsigned pr_size = g_clients[ci].prev_packet_data;
 			while (io_size > 0) {
@@ -253,7 +288,7 @@ void Worker_Thread()
 			delete over;
 		}
 		else {
-			std::cout << "Unknown GQCS event!\n";
+			std::cout << "Unknown GQCS event! - " << io_size << endl;
 			while (true);
 		}
 	}
@@ -261,6 +296,8 @@ void Worker_Thread()
 
 constexpr int DELAY_LIMIT = 100;
 constexpr int DELAY_LIMIT2 = 150;
+constexpr int MONSTER_DELAY_LIMIT = 200;
+constexpr int MONSTER_DELAY_LIMIT2 = 250;
 constexpr int ACCEPT_DELY = 50;
 
 void Adjust_Number_Of_Client()
@@ -275,8 +312,9 @@ void Adjust_Number_Of_Client()
 	auto duration = high_resolution_clock::now() - last_connect_time;
 	if (ACCEPT_DELY * delay_multiplier > duration_cast<milliseconds>(duration).count()) return;
 
-	int t_delay = global_delay;
-	if (DELAY_LIMIT2 < t_delay) {
+	int t_delay = player_delay;
+	int t_delay_2 = monster_delay;
+	if (DELAY_LIMIT2 < t_delay || MONSTER_DELAY_LIMIT2 < t_delay_2) {
 		if (true == increasing) {
 			max_limit = active_clients;
 			increasing = false;
@@ -289,7 +327,7 @@ void Adjust_Number_Of_Client()
 		return;
 	}
 	else
-		if (DELAY_LIMIT < t_delay) {
+		if (DELAY_LIMIT < t_delay || MONSTER_DELAY_LIMIT < t_delay_2) {
 			delay_multiplier = 10;
 			return;
 		}
@@ -325,7 +363,7 @@ void Adjust_Number_Of_Client()
 	CS_LOGIN_PACKET l_packet;
 
 	int temp = num_connections;
-	sprintf_s(l_packet.name, "%d", temp);
+	//sprintf_s(l_packet.name, "%d", temp);
 	l_packet.size = sizeof(CS_LOGIN_PACKET);
 	l_packet.type = CS_LOGIN;
 	SendPacket(num_connections, &l_packet);
@@ -355,40 +393,37 @@ void Test_Thread()
 
 		for (int i = 0; i < num_connections; ++i) {
 			if (false == g_clients[i].connected) continue;
-			//if (g_clients[i].last_move_time + 1s > high_resolution_clock::now()) continue;
-			//g_clients[i].last_move_time = high_resolution_clock::now();
-			short packet_type = rand() % 3;
-			if (packet_type == 0) {
-				CS_MOVE_PACKET my_packet;
-				my_packet.size = sizeof(my_packet);
-				my_packet.type = CS_MOVE;
-				my_packet.direction = rand() % 16;
-				if (my_packet.direction & 1) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(0, 0, 1));
-				if (my_packet.direction & 2) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(0, 0, -1));
-				if (my_packet.direction & 4) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(-1, 0, 0));
-				if (my_packet.direction & 8) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(1, 0, 0));
+			if (g_clients[i].last_move_time + 100ms > high_resolution_clock::now()) continue;
+			g_clients[i].last_move_time = high_resolution_clock::now();
+			CS_MOVE_PACKET my_packet;
+			my_packet.size = sizeof(my_packet);
+			my_packet.type = CS_MOVE;
+			my_packet.direction = rand() % 16;
+			short packet_type = rand() % 10;
+			if (packet_type <= 6) {
+				if (my_packet.direction & 1) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(0, 0, 3));
+				if (my_packet.direction & 2) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(0, 0, -3));
+				if (my_packet.direction & 4) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(-3, 0, 0));
+				if (my_packet.direction & 8) g_clients[i].pos = Vector3::Add(g_clients[i].pos, XMFLOAT3(3, 0, 0));
 				my_packet.pos = g_clients[i].pos;
-				my_packet.cxDelta = my_packet.cyDelta = my_packet.czDelta = 0.f;
 				my_packet.id = i;
-				//my_packet.move_time = static_cast<unsigned>(duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch()).count());
-				//cout << "ID: " << my_packet.id << ", " << "direction: " << my_packet.direction << ", "
-				//	<< "pos: " << my_packet.pos.x << "," << my_packet.pos.y << "," << my_packet.pos.z << endl;
+				my_packet.move_time = static_cast<unsigned>(duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch()).count());
 				SendPacket(i, &my_packet);
 			}
-			else if (packet_type == 1) {
-					CS_ATTACK_PACKET my_packet_2;
-					my_packet_2.size = sizeof(CS_ATTACK_PACKET);
-					my_packet_2.type = CS_ATTACK;
-					my_packet_2.id = i;
-					my_packet_2.pos = g_clients[i].pos;
-					SendPacket(i, &my_packet_2);
+			else if (packet_type <= 8) {
+				CS_ATTACK_PACKET my_packet_2;
+				my_packet_2.size = sizeof(CS_ATTACK_PACKET);
+				my_packet_2.type = CS_ATTACK;
+				my_packet_2.id = i;
+				my_packet_2.pos = g_clients[i].pos;
+				my_packet.move_time = static_cast<unsigned>(duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch()).count());
+				SendPacket(i, &my_packet_2);
 			}
-			else if (packet_type == 2) {
-				CS_COLLECT_PACKET my_packet_3;
-				my_packet_3.size = sizeof(CS_COLLECT_PACKET);
-				my_packet_3.type = CS_COLLECT;
+			else {
+				CS_CHANGEWEAPON_PACKET my_packet_3;
+				my_packet_3.size = sizeof(CS_CHANGEWEAPON_PACKET);
+				my_packet_3.type = CS_CHANGEWEAPON;
 				my_packet_3.id = i;
-				my_packet_3.pos = g_clients[i].pos;
 				SendPacket(i, &my_packet_3);
 				break;
 			}
@@ -432,17 +467,29 @@ void Do_Network()
 	return;
 }
 
-void GetPointCloud(int* size, float** points)
+void GetPointCloud(int* size, int* size_2, float** points, float** points_2)
 {
 	int index = 0;
+	int index_2 = 0;
 	for (int i = 0; i < num_connections; ++i)
 		if (true == g_clients[i].connected) {
-			point_cloud[index * 2] = static_cast<float>(g_clients[i].pos.z) / 4;
-			point_cloud[index * 2 + 1] = static_cast<float>(g_clients[i].pos.x) + 100;
+			point_cloud[index * 2] = g_clients[i].pos.x;
+			point_cloud[index * 2 + 1] = g_clients[i].pos.z;
 			index++;
+		}
+
+	
+	for (int i = 0; i < MAX_CLIENTS; ++i)
+		if (g_monsters[i].connected == true)
+		{
+			point_cloud_2[index_2 * 2] = g_monsters[i].pos.x;
+			point_cloud_2[index_2 * 2 + 1] = g_monsters[i].pos.z;
+			index_2++;
 		}
 
 	*size = index;
 	*points = point_cloud;
+	*size_2 = index_2;
+	*points_2 = point_cloud_2;
 }
 

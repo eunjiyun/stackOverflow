@@ -9,10 +9,22 @@
 #include "Monster.h"
 
 
-#define MAX_LIGHTS						16 
+#define MAX_LIGHTS						37 //5+26+5
 #define POINT_LIGHT						1
 #define SPOT_LIGHT						2
 #define DIRECTIONAL_LIGHT				3
+
+struct SHADOWMATERIAL
+{
+	XMFLOAT4				m_xmf4Ambient;
+	XMFLOAT4				m_xmf4Diffuse;
+	XMFLOAT4				m_xmf4Specular; //(r,g,b,a=power)
+	XMFLOAT4				m_xmf4Emissive;
+};
+
+
+
+
 
 struct LIGHT
 {
@@ -21,7 +33,7 @@ struct LIGHT
 	XMFLOAT4							m_xmf4Specular;
 	XMFLOAT3							m_xmf3Position;
 	float 								m_fFalloff;
-	XMFLOAT3							m_xmf3Direction;
+	XMFLOAT3							m_xmf3Direction;//0316 이게0 0 0이면 xmmatrixlooktolh 에서 오류
 	float 								m_fTheta; //cos(m_fTheta)
 	XMFLOAT3							m_xmf3Attenuation;
 	float								m_fPhi; //cos(m_fPhi)
@@ -56,7 +68,6 @@ class CStage
 public:
 	CStage();
 	~CStage();
-	int num = 0;
 
 	bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
@@ -74,25 +85,38 @@ public:
 
 	bool ProcessInput(UCHAR* pKeysBuffer);
 	void AnimateObjects(float fTimeElapsed);
+	void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList,LIGHT*, ID3D12DescriptorHeap* m_pd3dCbvSrvDescriptorHeap, vector<CMonster*> Monsters, vector<CPlayer*> Players,bool);
+	void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
+
 
 	void ReleaseUploadBuffers();
 	void SetCbvGPUDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle) { m_d3dCbvGPUDescriptorHandle = d3dCbvGPUDescriptorHandle; }
 
-	void UpdateBoundingBox();
 	void CheckObjectByObjectCollisions(float fTimeElapsed, CPlayer*& Pl);
 	void CheckMoveObjectsCollisions(float TimeElapsed, CPlayer*& pl, vector<CMonster*>& monsters, vector<CPlayer*>& players);
+	void CheckCameraCollisions(float fTimeElapsed, CPlayer*& pl, CCamera*& cm);
+	void CheckDoorCollisions(float fTimeElapsed, CPlayer*& pl);
 	XMFLOAT3 GetReflectVec(XMFLOAT3 ObjLook, XMFLOAT3 MovVec);
 
-	XMFLOAT3 Calculate_Direction(BoundingBox& pBouningBoxA, BoundingBox& pBouningBoxB);
+
+	void Lighthing(CPlayer*& pl);
+
+	void ChangeTexture(int iState);
+
+	float CalculateDistance(XMFLOAT3& pPlayer, XMFLOAT3& pLight);
+
+	void Pushing_Button(CPlayer*& pl);
 
 
 	CPlayer* m_pPlayer = NULL;
+	float							m_fLightRotationAngle = 0.0f;
+	static ID3D12DescriptorHeap* m_pd3dCbvSrvDescriptorHeap;
 
 protected:
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = NULL;
 
-	static ID3D12DescriptorHeap* m_pd3dCbvSrvDescriptorHeap;
+	
 
 	static D3D12_CPU_DESCRIPTOR_HANDLE	m_d3dCbvCPUDescriptorStartHandle;
 	static D3D12_GPU_DESCRIPTOR_HANDLE	m_d3dCbvGPUDescriptorStartHandle;
@@ -104,6 +128,8 @@ protected:
 	static D3D12_GPU_DESCRIPTOR_HANDLE	m_d3dCbvGPUDescriptorNextHandle;
 	static D3D12_CPU_DESCRIPTOR_HANDLE	m_d3dSrvCPUDescriptorNextHandle;
 	static D3D12_GPU_DESCRIPTOR_HANDLE	m_d3dSrvGPUDescriptorNextHandle;
+
+	
 
 public:
 	static void CreateCbvSrvDescriptorHeaps(ID3D12Device* pd3dDevice, int nConstantBufferViews, int nShaderResourceViews);
@@ -121,36 +147,65 @@ public:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCPUSrvDescriptorNextHandle() { return(m_d3dSrvCPUDescriptorNextHandle); }
 	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUSrvDescriptorNextHandle() { return(m_d3dSrvGPUDescriptorNextHandle); }
 
-	float								m_fElapsedTime = 0.0f;
-
-	CGameObject* monsterLight = NULL;
+	float							m_fElapsedTime = 0.0f;
 
 
-	XMFLOAT3							m_xmf3RotatePosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	XMFLOAT3					m_xmf3RotatePosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
-	LIGHT* m_pLights = NULL;
-	int									m_nLights = 0;
-	MATERIALS* m_pMaterials = NULL;
-	ID3D12Resource* m_pd3dcbMaterials = NULL;
-	MATERIAL* m_pcbMappedMaterials = NULL;
+	LIGHT*						m_pLights = NULL;
+	LIGHTS*						m_pShadowLights = NULL;
 
-	CShader** m_ppShaders2 = NULL;
-	int								m_nShaders2 = 0;
+	int								m_nLights = 0;
+	MATERIALS*				m_pMaterials = NULL;
+	ID3D12Resource*		m_pd3dcbMaterials = NULL;
+	MATERIAL*				m_pcbMappedMaterials = NULL;
 
-	ID3D12PipelineState* m_pd3dPipelineState = NULL;
-	D3D12_GPU_DESCRIPTOR_HANDLE m_d3dCbvGPUDescriptorHandle;
+	CShader**					m_ppShaders = NULL;
+	int								m_nShaders = 0;
+	CObjectsShader* pObjectShader = nullptr;
 
-	XMFLOAT4							m_xmf4GlobalAmbient;
+	ID3D12PipelineState*								m_pd3dPipelineState = NULL;
+	D3D12_GPU_DESCRIPTOR_HANDLE		m_d3dCbvGPUDescriptorHandle;
 
-	ID3D12Resource* m_pd3dcbLights = NULL;
-	LIGHTS* m_pcbMappedLights = NULL;
+	XMFLOAT4					m_xmf4GlobalAmbient;
+
+	ID3D12Resource*		m_pd3dcbLights = NULL;
+	LIGHTS*						m_pcbMappedLights = NULL;
 
 public:
 	vector<XMFLOAT3> mpObjVec;
-	XMFLOAT3 tmp;
-	float						mpTime = 0.f;
-	bool wakeUp = false;
-	XMFLOAT4X4					m_xmf4x4World = Matrix4x4::Identity();
+	float							mpTime = 0.f;
+	XMFLOAT4X4				m_xmf4x4World = Matrix4x4::Identity();
 
 	int whatPlayer = 1;
+
+	CBoxShader*							pBoxShader = NULL;
+	CShadowMapShader*			m_pShadowShader = NULL;
+	CDepthRenderShader*		m_pDepthRenderShader = NULL;
+	CTextureToViewportShader* m_pShadowMapToViewport = NULL;
+	CGameObject** hpUi = nullptr;
+
+	// 각 문마다 열리는 조건을 달성했을 경우 true로 전환
+	bool										b1stDoorPass = false;
+	bool										b2ndDoorPass = false;
+	bool										b3rdDoorPass = false;
+	bool										b4thDoorPass = false;
+	bool										b5thDoorPass = false;// 문 통과
+
+	vector<int>							DeleteObject;
+	int											iGetItem = 0;
+	int											iGetCoin = 0;
+	bool										bLightwakeUp = false;
+	CTexture*								pCandleTextures[6] = {};
+	CTexture*								pButtonTextures[2] = {};
+	int											m_iHitNum = 0;
+	int											m_iHit[5] = {};
+
+
+	public:
+		array<vector<CGameObject*>, 7> pPuzzles;
+		CMaterial* texMat = nullptr;
+		CGameObject* text = nullptr;
+
 };
+

@@ -27,6 +27,32 @@
 #include< cstdlib >
 
 
+//sound
+#include <xaudio2.h>
+#pragma comment(lib, "xaudio2.lib")
+
+
+//ui
+#include <unordered_map>
+#include <utility>
+//#include <pair>
+constexpr float WINDOW_MODE_RATE = 1.f;
+//#include <SpriteBatch.h>
+//#include <SimpleMath.h>
+#include<memory>
+#include <d3d12.h>
+#include <d3dcompiler.h>
+#include <dxgi1_6.h>
+#include <d2d1_3.h>
+#include <dwrite_3.h>
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "dwrite.lib")
+
+
+
+
 //consol
 #ifdef UNICODE
 #pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
@@ -84,8 +110,17 @@ extern HINSTANCE						ghAppInstance;
 #define ROOT_PARAMETER_CAMERA			0
 #define ROOT_PARAMETER_PLAYER			1
 #define ROOT_PARAMETER_LIGHT			2
-#define ROOT_PARAMETER_BONEOFFSET       10
-#define ROOT_PARAMETER_BONETRANSFORM    11
+#define ROOT_PARAMETER_BONEOFFSET       11
+#define ROOT_PARAMETER_BONETRANSFORM    12
+
+#define MAX_SHADOW_LIGHTS				4 
+#define MAX_DEPTH_TEXTURES		MAX_SHADOW_LIGHTS
+
+#define _PLANE_WIDTH			4307//1330 1024 4307
+#define _PLANE_HEIGHT			474//1330 1024
+
+#define _DEPTH_BUFFER_WIDTH		(FRAME_BUFFER_WIDTH * 8)
+#define _DEPTH_BUFFER_HEIGHT	(FRAME_BUFFER_HEIGHT * 4)
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")
@@ -115,8 +150,9 @@ extern float ReadFloatFromFile(FILE* pInFile);
 
 #define ANIMATION_TYPE_ONCE				0
 #define ANIMATION_TYPE_LOOP				1
-#define ANIMATION_TYPE_PINGPONG			2
+#define ANIMATION_TYPE_DOOR				2
 #define ANIMATION_TYPE_DEAD				3
+#define ANIMATION_TYPE_JUMP				4
 
 
 #define ANIMATION_CALLBACK_EPSILON		0.00165f
@@ -285,7 +321,7 @@ namespace Vector3
 		xmf3Vector.y = 0;
 		return xmf3Vector;
 	}
-	inline void Print(XMFLOAT3& xmf3Vector)
+	inline void Print(const XMFLOAT3& xmf3Vector)
 	{
 		cout << xmf3Vector.x << ", " << xmf3Vector.y << ", " << xmf3Vector.z << endl;
 	}

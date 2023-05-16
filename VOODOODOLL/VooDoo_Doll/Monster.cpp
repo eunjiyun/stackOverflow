@@ -7,31 +7,6 @@ CMonster::CMonster(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComm
 	if (pModel != nullptr) {
 		_Model = pModel;
 
-		//23.02.05
-		//if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo5.bin", NULL);
-		//switch (whatMonster)
-		//{
-		//case 1:
-		//	if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo19.bin", NULL, 1);
-		//	break;
-		//case 2:
-		//	if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo23.bin", NULL, 2);
-		//	break;
-		//case 3:
-		//	if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo31.bin", NULL, 3);
-		//	break;
-		//case 4:
-		//	if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo41.bin", NULL, 4);
-		//	break;
-		//case 5:
-		//	if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo52.bin", NULL, 5);
-		//	break;
-		//case 6:
-		//	if (!pMonsterModel) pMonsterModel = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Voodoo62.bin", NULL, 6);
-		//	break;
-		//}
-		//
-
 		CLoadedModelInfo* cap = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Warlock_cap.bin", NULL, 7);
 		m_ppHat = new CBulletObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, cap, 1, 2);
 		m_ppHat->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
@@ -45,9 +20,51 @@ CMonster::CMonster(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComm
 
 		SetChild(_Model->m_pModelRootObject, true);
 		m_pSkinnedAnimationController = new CAnimationController(pd3dDevice, pd3dCommandList, nAnimationTracks, _Model);
+
+		//AnimationControllers[2]->SetCallbackKeys(0, 1);
+		//m_pSkinnedAnimationController->SetCallbackKeys(0, 1);
+		//m_pSkinnedAnimationController->SetCallbackKeys(1, 1);
+		//m_pSkinnedAnimationController->SetCallbackKeys(2, 1);
+
+
+		//m_pSkinnedAnimationController->SetCallbackKeys(3, 1);
+
+
+		////m_pSkinnedAnimationController->SetCallbackKey(0, 0, 0.1f, _T("Sound/monster.wav"));
+		//m_pSkinnedAnimationController->SetCallbackKey(1, 0, 0.1f, _T("Sound/monster.wav"));
+		////m_pSkinnedAnimationController->SetCallbackKey(2, 0, 0.1f, _T("Sound/monsterAttack.wav"));
+
+		//m_pSkinnedAnimationController->SetCallbackKey(3, 0, 0.1f, _T("Sound/monsterDeath.wav"));
+		//
+
+
+		//CAnimationCallbackHandler* pAnimationCallbackHandler = new CSoundCallbackHandler();
+		////m_pSkinnedAnimationController->SetAnimationCallbackHandler(0, pAnimationCallbackHandler);
+		//m_pSkinnedAnimationController->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+		////m_pSkinnedAnimationController->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+		//m_pSkinnedAnimationController->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
 	}
 }
 
 CMonster::~CMonster()
 {
+}
+
+void CMonster::Update(float fTimeElapsed)
+{
+	if (m_pSkinnedAnimationController->Cur_Animation_Track != 1)
+		m_xmf3Velocity = XMFLOAT3(0, 0, 0);
+
+	XMFLOAT3 xmf3Velocity = Vector3::ScalarProduct(m_xmf3Velocity, fTimeElapsed, false);
+
+	Move(xmf3Velocity);
+
+	if (m_ppHat) {
+		XMFLOAT3 hats_xmf3Velocity = Vector3::ScalarProduct(m_hats_xmf3Velocity, fTimeElapsed, false);
+
+		m_ppHat->Move(xmf3Velocity);
+	}
+	m_xmOOBB.Center = GetPosition();
+
+	//Vector3::Print(m_xmOOBB.Center);
 }

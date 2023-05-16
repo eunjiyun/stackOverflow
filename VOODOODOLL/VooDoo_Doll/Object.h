@@ -40,7 +40,6 @@ class CTexture
 {
 public:
 	CTexture(int nTextureResources, UINT nResourceType, int nSamplers, int nRootParameters);
-	CTexture(const CTexture& other);
 	virtual ~CTexture();
 
 private:
@@ -111,7 +110,6 @@ class CMaterial
 {
 public:
 	CMaterial(int nTextures);
-	CMaterial(const CMaterial& other);
 	virtual ~CMaterial();
 
 private:
@@ -119,9 +117,13 @@ private:
 
 public:
 	CShader* m_pShader = NULL;//
+	
 	static CShader* m_pStandardShader;//
 	static CShader* m_pSkinnedAnimationShader;//
+	static CShader* depthShader;
+	
 	CTexture** m_ppTextures = NULL; //0:Albedo, 1:Specular, 2:Metallic, 3:Normal, 4:Emission, 5:DetailAlbedo, 6:DetailNormal //
+
 
 	XMFLOAT4						m_xmf4AlbedoColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);//
 	XMFLOAT4						m_xmf4EmissiveColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);//
@@ -130,6 +132,7 @@ public:
 
 public:
 	UINT							m_nType = 0x00;//
+
 
 	float							m_fGlossiness = 0.0f;//
 	float							m_fSmoothness = 0.0f;//
@@ -167,10 +170,10 @@ public:
 	void SetStandardShader() { CMaterial::SetShader(m_pStandardShader); }
 	void SetSkinnedAnimationShader() { CMaterial::SetShader(m_pSkinnedAnimationShader); }
 
-	//23.01.30
+
 	void SetAlbedoColor(XMFLOAT4 xmf4Color) { m_xmf4AlbedoColor = xmf4Color; }
 	void SetEmissionColor(XMFLOAT4 xmf4Color) { m_xmf4EmissionColor = xmf4Color; }
-	//
+
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +190,6 @@ class CAnimationCallbackHandler
 {
 public:
 	CAnimationCallbackHandler() { }
-	CAnimationCallbackHandler(const CAnimationCallbackHandler& other) {}
 
 	~CAnimationCallbackHandler() { }
 
@@ -201,7 +203,6 @@ class CAnimationSet
 {
 public:
 	CAnimationSet(float fLength, int nFramesPerSecond, int nKeyFrameTransforms, int nSkinningBones, char* pstrName);
-	CAnimationSet(const CAnimationSet& other);
 	~CAnimationSet();
 
 public:
@@ -235,7 +236,6 @@ class CAnimationSets
 {
 public:
 	CAnimationSets(int nAnimationSets);
-	CAnimationSets(const CAnimationSets& other);
 	~CAnimationSets();
 
 private:
@@ -257,7 +257,6 @@ class CAnimationTrack
 {
 public:
 	CAnimationTrack() {}
-	CAnimationTrack(const CAnimationTrack& other);
 	~CAnimationTrack();
 	
 public:
@@ -296,7 +295,6 @@ class CLoadedModelInfo
 {
 public:
 	CLoadedModelInfo() {}
-	CLoadedModelInfo(const CLoadedModelInfo& other);
 	~CLoadedModelInfo();
 
 	CAnimationSets* m_pAnimationSets = NULL;
@@ -313,16 +311,14 @@ class CAnimationController
 {
 public:
 	CAnimationController(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int nAnimationTracks, CLoadedModelInfo* pModel);
-	CAnimationController(const CAnimationController& other);
 	~CAnimationController();
-
 public:
 	float 							m_fTime = 0.0f;//
 
 	short Cur_Animation_Track = 0;//
 
 	int 							m_nAnimationTracks = 0;//
-	CAnimationTrack* m_pAnimationTracks = NULL;//
+	CAnimationTrack* m_pAnimationTracks = nullptr;//
 
 	CAnimationSets* m_pAnimationSets = NULL;//
 
@@ -367,7 +363,6 @@ class CGameObject
 public:
 	CGameObject();
 	CGameObject(int nMaterials);
-	CGameObject(const CGameObject& other);
 	virtual ~CGameObject();
 
 public:
@@ -375,12 +370,16 @@ public:
 
 public:
 	char							m_pstrName[64] = { '\0' };// //
+	char							m_pstrTextureName[64] = { '\0' };
 	CMesh** m_ppMeshes;// //
 	int								m_nMeshes;//
 	D3D12_GPU_DESCRIPTOR_HANDLE m_d3dCbvGPUDescriptorHandle;//
 	char							m_pstrFrameName[64];//
 	int								m_nMaterials = 0;//
 	CMaterial** m_ppMaterials = NULL;//
+
+	int										m_iObjID = 0; 
+	bool									m_bGetItem = false;
 
 	XMFLOAT4X4						m_xmf4x4ToParent;//
 	XMFLOAT4X4						m_xmf4x4World;//
@@ -407,8 +406,7 @@ public:
 	bool onAct = false;
 	bool dieOnce = false;//
 	bool onFloor = false;
-	int plWhat = 1;
-
+	
 	int c_id = -1;//monster id //
 	int npc_type = -1;//monster type //
 
@@ -421,6 +419,10 @@ public:
 	CGameObject* m_pLockedObject = NULL;//
 	float						m_fMovingSpeed = 0.0f;//
 	float						m_fRotationSpeed = 0.0f;//
+
+	CMaterial* m_pMaterial = NULL;
+
+	int shadowID = 0;
 
 public:
 	void AddRef();
@@ -443,8 +445,8 @@ public:
 	virtual void Animate(float fTimeElapsed,bool onPlayer);
 
 	virtual void OnPrepareRender() { }
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera = NULL);
-	void lightRender(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera = NULL);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState,CCamera* pCamera = NULL);
+	
 	void onPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState);
 	virtual void OnLateUpdate() { }
 
@@ -517,11 +519,15 @@ public:
 	void SetMovingSpeed(float fSpeed) { m_fMovingSpeed = fSpeed; }
 	virtual void Reset() {}
 
+	void SetMaterial(CMaterial* pMaterial);
+
 	void SetFirePosition(XMFLOAT3 xmf3FirePosition)
 	{
 		m_xmf3FirePosition = xmf3FirePosition;
 		SetPosition(xmf3FirePosition);
 	}
+
+	void RenderText(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12Device* pd3dDevice, CCamera* pCamera);
 };
 
 
@@ -563,7 +569,9 @@ public:
 class CBulletObject : public CGameObject
 {
 public:
+
 	CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CLoadedModelInfo* pModel, int nAnimationTracks,int chooseObj);
+
 	virtual ~CBulletObject() {}
 
 public:
@@ -584,3 +592,195 @@ public:
 	virtual void Reset();
 };
 //
+
+class CSoundCallbackHandler : public CAnimationCallbackHandler
+{
+public:
+	CSoundCallbackHandler() { }
+	~CSoundCallbackHandler() { }
+
+public:
+	virtual void HandleCallback(void* pCallbackData, float fTrackPosition);
+};
+
+
+class CDoor : public CGameObject
+{
+public:
+	CLoadedModelInfo* _Model;
+
+	CDoor(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CLoadedModelInfo* pModel, int nAnimationTracks);
+	virtual ~CDoor();
+};
+
+enum class TextureKey {
+	LOBBY_BG,
+	LOBBY_BG_FWD,
+	LOBBY_READY,
+
+	SKYBOX_TOP,
+	SKYBOX_SIDE,
+	PKN1_PKN2, MSH1, TREE, ARCH, PKN3, HFPK, ONIO, MSH2, ROK1, ROK2, LTRE,
+	SNAL, CATS, SOFA, CHAR, BPOT, STL1_STL2, MGST, BASN, PDW1, PDW2,
+	BSF1, BSF2, FBU1, FBU2, CHDW, MOPP, INLI, DESK,
+	CUSN, SIGN, SPMP, LEV1, LEV2, DRW2, DRW1, LEAV, TX97, TX64,
+	GEMB, GEMR, GEMW, GEMP, MSTB, MSTR, MSTW, MSTP, FENC, MPED, BENC, WICH, NMGD,
+	TXNM, TXWC, TETX, SCS1, SCS2, ROOT, COMEHERE,
+
+	TERN,
+
+	// Player
+	NM_HAND,
+	WC_HAND,
+
+	// UI
+	BATTLE_UI_WS_LEFT,
+	BATTLE_UI_WS_RIGHT,
+	BATTLE_UI_WS_BLUE,
+	BATTLE_UI_WS_PURPLE,
+	BATTLE_UI_WS_RED,
+	BATTLE_UI_WS_WHITE,
+	BATTLE_UI_WS_BLUE_BROKEN,
+	BATTLE_UI_WS_PURPLE_BROKEN,
+	BATTLE_UI_WS_RED_BROKEN,
+	BATTLE_UI_WS_WHITE_BROKEN,
+
+	BATTLE_UI_SKILL_FRAME,
+	BATTLE_UI_SKILL_DASH_ICON,
+	BATTLE_UI_SKILL_FAKE_DIE_ICON,
+	BATTLE_UI_SKILL_HALT_ICON,
+	BATTLE_UI_SKILL_GEM_TRANSPARENT_ICON,
+
+	BATTLE_UI_SOUL_FONT,
+	BATTLE_UI_SOUL_ICON,
+	BATTLE_UI_SPEED_ICON,
+	BATTLE_UI_TIMER_ICON,
+	BATTLE_UI_ENGFONT,
+	BATTLE_UI_SKILL_COOLTIME_FILTER,
+	BATTLE_UI_BAR_BG,
+	BATTLE_UI_BAR_FILL,
+	BATTLE_UI_BAR_RESPAWN,
+	BATTLE_UI_BAR_FAKEDEATH,
+	BATTLE_UI_CHARSKILL_BG,
+	BATTLE_UI_CHARSKILL_FONT_RED,
+	BATTLE_UI_CHARSKILL_FONT_BLUE,
+
+	//LOBBY
+	LOBBY_LOGIN,
+	LOBBY_SPANI_SPIDER,
+	LOBBY_SPANI_WITCH,
+	LOBBY_SPANI_NMGD1,
+	LOBBY_SPANI_NMGD2,
+	LOBBY_SPANI_NMGD3,
+	LOBBY_SPANI_NMGD4,
+
+	LOBBY_GAME_START_BUTTON,
+	LOBBY_GAME_QUIT_BUTTON,
+
+	LOBBY_LOADING_ICON,
+	LOBBY_QUIT_FINDING_GAME,
+
+	LOBBY_ID_ICON,
+	LOBBY_ID_BG,
+
+	//LOGIN
+	LOGIN_BG,
+	LOGIN_LOGO,
+	LOGIN_SELECTED,
+	LOGIN_LOGIN_BOX,
+	LOGIN_REGISTER_BOX,
+	LOGIN_REGISTER_BUTTON,
+	LOGIN_LOGIN_BUTTON,
+	LOGIN_QUIT_BUTTON,
+	LOGIN_BACK_BUTTON,
+
+	//WCWIN
+	WCWIN_BG,
+	WCWIN_WICH,
+	WCWIN_NM1,
+	WCWIN_NM2,
+	WCWIN_NM3,
+	WCWIN_SOUL,
+
+	//NMWIN
+	NMWIN_BG,
+	NMWIN_NM1,
+	NMWIN_NM2,
+	NMWIN_NM3,
+	NMWIN_NM4,
+	NMWIN_WICH,
+
+	//EFFECT & ETC
+	EF_CONFETTI,
+	RESULT_TOLOBBY_ICON
+
+
+};
+
+class SpriteFont //: public GraphicsObject
+{
+public:
+	explicit SpriteFont(TextureKey key, float width, float height);
+	explicit SpriteFont(int num_r, int num_c, TextureKey key, float sprite_w, float sprite_h, float pixel_x, float pixel_y);
+	explicit SpriteFont(char c, TextureKey key, float sprite_w, float sprite_h, float pixel_x, float pixel_y);
+
+public:
+	//virtual PSOType GetPSOType() override;
+
+	/*virtual void CreateConstantBuffer() override;
+	virtual void UpdateConstantBuffer(ID3D12GraphicsCommandList* cl) override;*/
+
+	void SetTexturePos(float x, float y);
+	void SetTextureScl(float x, float y);
+
+//public:
+	//XMFLOAT3 m_Position;
+
+
+private:
+	XMFLOAT2 m_TexPos;
+	XMFLOAT2 m_TexScl;
+
+	XMFLOAT3 m_Scale;
+	XMFLOAT3 m_Position;
+};
+
+
+
+struct SpriteFontInfo
+{
+	int num_r;
+	int num_c;
+	float width;
+	float height;
+};
+
+class Text
+{
+public:
+	//explicit Text(Scene* scene, TextureKey key, float x, float y, string contents);
+	explicit Text(TextureKey key, float x, float y, string contents);
+
+	void PushBack(char letter);
+	void PopBack();
+	size_t Size() { return m_Contents.size(); }
+	string GetString() { return m_Contents; }
+
+	void operator=(const string& text);
+	void operator=(string&& text);
+
+
+private:
+	void CreateLettersFromContents();
+
+private:
+	//Scene* m_Scene;
+	TextureKey			m_TextureKey;
+	POINTF				m_Pos;
+	string				m_Contents;
+	list<SpriteFont*>	m_Letters;
+
+	SpriteFontInfo m_FontInfo;
+	unordered_map<char, pair<int, int>> m_CharRowCol;
+};
+

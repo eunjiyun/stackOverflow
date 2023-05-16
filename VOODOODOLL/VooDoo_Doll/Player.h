@@ -20,7 +20,7 @@ protected:
 	float           			m_fYaw = 0.0f;
 	float           			m_fRoll = 0.0f;
 
-	XMFLOAT3					m_xmf3Velocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	
 	XMFLOAT3     				m_xmf3Gravity = XMFLOAT3(0.0f, 0.0f, 0.0f);
 	float           			m_fMaxVelocityXZ = 0.0f;
 	float           			m_fMaxVelocityY = 0.0f;
@@ -32,15 +32,18 @@ protected:
 	CCamera* m_pCamera = NULL;
 
 public:
+	XMFLOAT3					m_xmf3Velocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
+
 	CGameObject* m_ppBullet;
 	int c_id = -1;
 	short cur_weapon = 0;
 	bool alive = true;
-	steady_clock::time_point curTime;
+	float HP = 0;
 	float cxDelta, cyDelta, czDelta = 0.0f;
 	CLoadedModelInfo* pAngrybotModels[3];
-	CLoadedModelInfo* tmp = NULL;
 	CAnimationController* AnimationControllers[3];
+	
+
 public:
 	CPlayer();
 	virtual ~CPlayer();
@@ -96,10 +99,10 @@ public:
 
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed) { return(NULL); }
 	virtual void OnPrepareRender();
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera = NULL);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState,bool shadow, CCamera* pCamera = NULL);
 
 
-	//230205
+
 	void		OnUpdateTransform();
 	void		UpdateBoundingBox();
 	void		boundingAnimate(float fElapsedTime);
@@ -111,15 +114,7 @@ public:
 
 };
 
-class CSoundCallbackHandler : public CAnimationCallbackHandler
-{
-public:
-	CSoundCallbackHandler() { }
-	~CSoundCallbackHandler() { }
 
-public:
-	virtual void HandleCallback(void* pCallbackData, float fTrackPosition);
-};
 
 class CTerrainPlayer : public CPlayer
 {
@@ -133,11 +128,51 @@ public:
 	virtual void Move(ULONG nDirection, float fDistance, bool bVelocity = false);
 
 	virtual void Update(float fTimeElapsed);
-	virtual void otherPlayerUpdate(float fTimeElapsed);
-
-	virtual void playerAttack(int, CGameObject*, CGameObject***);
-	virtual void playerRun();
-	virtual void playerDie();
-	virtual void playerCollect();
 };
+
+struct WAVEHEADER
+{
+	char chunkId[4];
+	unsigned long chunkSize;
+	char format[4];
+	char subchunk1Id[4];
+	unsigned long subchunk1Size;
+	unsigned short audioFormat;
+	unsigned short numChannels;
+	unsigned long sampleRate;
+	unsigned long byteRate;
+	unsigned short blockAlign;
+	unsigned short bitsPerSample;
+	char subchunk2Id[4];
+	unsigned long subchunk2Size;
+};
+
+class SoundPlayer {
+public:
+	SoundPlayer();
+	~SoundPlayer();
+
+	bool Initialize();
+	void Terminate();
+
+	HRESULT LoadWaveFile(const wchar_t* filename);
+	bool LoadWave(const wchar_t* filename);
+
+	void Play();
+	void Stop();
+
+public:
+	IXAudio2SourceVoice* sourceVoice_;
+
+
+	XAUDIO2_BUFFER buffer_;
+	WAVEFORMATEX waveFormat_;
+
+private:
+	IXAudio2* xAudio2_;
+	IXAudio2MasteringVoice* masterVoice_;
+	std::vector<BYTE> audioData_;
+};
+
+
 

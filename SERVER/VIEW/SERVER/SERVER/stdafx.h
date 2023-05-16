@@ -39,6 +39,7 @@ using namespace DirectX::PackedVector;
 #include<vector>
 #include <array>
 #include <set>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
@@ -49,12 +50,24 @@ using namespace DirectX::PackedVector;
 #include <chrono>
 #include <atomic>
 #include <random>
-
+#include <concurrent_queue.h>
+#include <concurrent_priority_queue.h>
+#include <concurrent_unordered_map.h>
+#include <concurrent_vector.h>
+#include <mutex>
+#include <shared_mutex>
 using namespace std;
 using namespace chrono;
+using namespace concurrency;
 //
 
 
+constexpr short MAP_X_SIZE = 700;
+constexpr short MAP_Y_SIZE = 480;
+constexpr short MAP_Z_SIZE = 4600;
+constexpr short STAGE_NUMBERS = 6;
+
+#define BULLET_SIZE XMFLOAT3{10,10,10}
 #define FRAME_BUFFER_WIDTH		640
 #define FRAME_BUFFER_HEIGHT		480
 
@@ -322,9 +335,8 @@ namespace Matrix4x4
 struct XMFLOAT3Hash {
 	size_t operator()(const XMFLOAT3& v) const {
 		size_t h1 = std::hash<float>{}(v.x);
-		size_t h2 = std::hash<float>{}(v.y);
-		size_t h3 = std::hash<float>{}(v.z);
-		return h1 ^ (h2 << 1) ^ (h3 << 2);	// XOR 연산자로 해시 합성
+		size_t h2 = std::hash<float>{}(v.z);
+		return h1 ^ (h2 << 1);	// XOR 연산자로 해시 합성
 	}
 };
 
@@ -334,5 +346,40 @@ struct XMFLOAT3Equal {
 	}
 };
 
+struct MYPOINT {
+	short x = 0;
+	short z = 0;
+	MYPOINT(short _x, short _z) : x(_x), z(_z) {}
+};
+class comparePOINT {
+public:
+	bool operator()(const MYPOINT& p1, const MYPOINT& p2) const {
+		if (p1.x < p2.x) return true;
+		else if (p1.x > p2.x) return false;
+		else if (p1.z < p2.z) return true;
+		else return false;
+	}
+};
 
-
+struct Stage_Location_Info
+{
+	int min_z;
+	int max_z;
+};
+template<typename T>
+class threadsafe_vector : public vector<T>
+{
+public:
+	void emplace_back(const T& value) {
+		// lock_guard<mutex> _vec_lock{ v_lock };
+		//unique_lock<shared_mutex> vec_lock{ v_shared_lock };
+		vector<T>::emplace_back(value);
+	}
+	void erase(typename vector<T>::const_iterator iter) {
+		//lock_guard<mutex> vec_lock{ v_lock };
+		vector<T>::erase(iter);
+	}
+	//mutable mutex v_lock;
+	unsigned short cur_stage = 1;
+	mutable shared_mutex v_shared_lock;
+};

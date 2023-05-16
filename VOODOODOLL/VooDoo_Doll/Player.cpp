@@ -72,7 +72,12 @@ void CPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Right, -fDistance);
 
 		if (dwDirection & DIR_JUMP && onFloor) {
-			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, fDistance * 10); onFloor = false; }
+			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, fDistance * 15); 
+			onFloor = false;
+			m_pSkinnedAnimationController->SetTrackPosition(5, 1.0f);
+			//m_pSkinnedAnimationController->SetTrackEnable(m_pSkinnedAnimationController->Cur_Animation_Track, false);
+			//m_pSkinnedAnimationController->SetTrackEnable(5, true);
+		}
 		//if (dwDirection & DIR_DOWN) xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, -fDistance);
 
 
@@ -90,7 +95,8 @@ void CPlayer::Move(const XMFLOAT3& xmf3Shift, bool bUpdateVelocity)
 	{
 		m_xmf3Position = Vector3::Add(m_xmf3Position, xmf3Shift);
 		m_pCamera->Move(xmf3Shift);
-
+		obBox.Center = m_xmf3Position;
+		obBox.Center.y += 10.f;
 	}
 }
 
@@ -161,6 +167,7 @@ void CPlayer::Update(float fTimeElapsed)
 
 	m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, m_xmf3Gravity);
 
+
 	float fLength = sqrtf(m_xmf3Velocity.x * m_xmf3Velocity.x + m_xmf3Velocity.z * m_xmf3Velocity.z);
 	float fMaxVelocityXZ = m_fMaxVelocityXZ;
 	if (fLength > m_fMaxVelocityXZ)
@@ -169,6 +176,7 @@ void CPlayer::Update(float fTimeElapsed)
 		m_xmf3Velocity.z *= (fMaxVelocityXZ / fLength);
 	}
 
+
 	float fMaxVelocityY = m_fMaxVelocityY;
 	fLength = sqrtf(m_xmf3Velocity.y * m_xmf3Velocity.y);
 	if (fLength > m_fMaxVelocityY) m_xmf3Velocity.y *= (fMaxVelocityY / fLength);
@@ -176,24 +184,15 @@ void CPlayer::Update(float fTimeElapsed)
 
 	XMFLOAT3 xmf3Velocity = Vector3::ScalarProduct(m_xmf3Velocity, fTimeElapsed, false);
 
-
 	Rotate(cxDelta, cyDelta, czDelta);
 	Move(xmf3Velocity, false);
 
+	obBox.Center = m_xmf3Position;
+	obBox.Center.y += 10.f;
 }
 
 void CPlayer::Deceleration(float fTimeElapsed)
 {
-	DWORD nCurrentCameraMode = m_pCamera->GetMode();
-	if (nCurrentCameraMode == THIRD_PERSON_CAMERA)
-		m_pCamera->Update(m_xmf3Position, fTimeElapsed);
-
-	//if (m_pCameraUpdatedContext)
-	//	OnCameraUpdateCallback(fTimeElapsed);
-
-	if (nCurrentCameraMode == THIRD_PERSON_CAMERA) m_pCamera->SetLookAt(m_xmf3Position);
-	m_pCamera->RegenerateViewMatrix();
-
 	float fLength = Vector3::Length(m_xmf3Velocity);
 	float fDeceleration = (m_fFriction * fTimeElapsed);
 	if (fDeceleration > fLength) fDeceleration = fLength;
@@ -254,12 +253,15 @@ void CPlayer::OnPrepareRender()
 	m_xmf4x4ToParent = Matrix4x4::Multiply(XMMatrixScaling(m_xmf3Scale.x, m_xmf3Scale.y, m_xmf3Scale.z), m_xmf4x4ToParent);
 }
 
-void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, CCamera* pCamera)
+void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* m_pd3dGraphicsRootSignature, ID3D12PipelineState* m_pd3dPipelineState, bool shadow, CCamera* pCamera)
 {
 	DWORD nCameraMode = (pCamera) ? pCamera->GetMode() : 0x00;
-	//cout << c_id << endl;
-	if (nCameraMode == THIRD_PERSON_CAMERA) CGameObject::Render(pd3dCommandList, m_pd3dGraphicsRootSignature, m_pd3dPipelineState, pCamera);
+
+	shadowID = 1;
+	if (nCameraMode == THIRD_PERSON_CAMERA || true == shadow)
+		CGameObject::Render(pd3dCommandList, m_pd3dGraphicsRootSignature, m_pd3dPipelineState, pCamera);
 }
+
 
 void CPlayer::OnUpdateTransform()
 {
@@ -272,6 +274,7 @@ void CPlayer::OnUpdateTransform()
 void CPlayer::UpdateBoundingBox()
 {
 	obBox.Center = m_xmf3Position;
+	obBox.Center.y += 10.f;
 }
 
 void CPlayer::boundingAnimate(float fElapsedTime)
@@ -284,11 +287,13 @@ void CPlayer::boundingAnimate(float fElapsedTime)
 // 
 #define _WITH_DEBUG_CALLBACK_DATA
 
-void CSoundCallbackHandler::HandleCallback(void* pCallbackData, float fTrackPosition)
+void CSoundCallbackHandler::HandleCallback(void* pCallbackData, float fTrackPosition)//0501
 {
+
 	_TCHAR* pWavName = (_TCHAR*)pCallbackData;
 #ifdef _WITH_DEBUG_CALLBACK_DATA
 	TCHAR pstrDebug[256] = { 0 };
+
 	_stprintf_s(pstrDebug, 256, _T("%s(%f)\n"), pWavName, fTrackPosition);
 	OutputDebugString(pstrDebug);
 #endif
@@ -297,6 +302,7 @@ void CSoundCallbackHandler::HandleCallback(void* pCallbackData, float fTrackPosi
 #else
 	PlaySound(pWavName, NULL, SND_FILENAME | SND_ASYNC);
 #endif
+
 }
 
 CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, int choosePl)
@@ -304,14 +310,18 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 	m_pCamera = ChangeCamera(THIRD_PERSON_CAMERA, 0.0f);
 
 
-	pAngrybotModels[0] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body26.bin", NULL, 7);
-	pAngrybotModels[1] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body27.bin", NULL, 7);
-	pAngrybotModels[2] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/body28.bin", NULL, 7);
+	pAngrybotModels[0] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/swordPl.bin", NULL, 7);
+
+	pAngrybotModels[1] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/gunPl.bin", NULL, 7);
+
+	pAngrybotModels[2] = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/fistPl.bin", NULL, 7);
+
 
 	for (int i = 0; i < 3; i++) {
 		AnimationControllers[i] = new CAnimationController(pd3dDevice, pd3dCommandList, 6, pAngrybotModels[i]);
 	}
 
+	AnimationControllers[0]->m_pAnimationTracks[2].SetSpeed(2.0f);
 	if (1 == choosePl)
 	{
 		SetChild(pAngrybotModels[0]->m_pModelRootObject, true);
@@ -328,29 +338,26 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		m_pSkinnedAnimationController = AnimationControllers[2];
 	}
 
-
-	CLoadedModelInfo* arrow = CGameObject::LoadGeometryAndAnimationFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Warlock_weapon2.bin", NULL, 7);
-	m_ppBullet = new CBulletObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, arrow, 1,1);
+	m_ppBullet = new CBulletObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, NULL, 1, 3);
 	m_ppBullet->m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
-	m_ppBullet->SetScale(2.f, 2.f, 2.f);
+	m_ppBullet->SetScale(0.1f, 0.1f, 0.1f);
 
 	m_ppBullet->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
 	m_ppBullet->SetRotationSpeed(360.0f);
 	m_ppBullet->SetMovingSpeed(120.0f);
-	m_ppBullet->SetPosition(XMFLOAT3(5000,5000,5000));
-	if (arrow) delete arrow;
+	m_ppBullet->SetPosition(XMFLOAT3(5000, 5000, 5000));
 
 
 	m_pSkinnedAnimationController->SetTrackAnimationSet(0, 0);
 	m_pSkinnedAnimationController->SetTrackAnimationSet(1, 1);
-	//23.02.20
+
 	m_pSkinnedAnimationController->SetTrackAnimationSet(2, 2);
 	m_pSkinnedAnimationController->SetTrackAnimationSet(3, 3);
 	m_pSkinnedAnimationController->SetTrackAnimationSet(4, 4);
 	m_pSkinnedAnimationController->SetTrackAnimationSet(5, 5);
-	//
+
 	m_pSkinnedAnimationController->SetTrackEnable(1, false);
-	//23.02.20
+
 	m_pSkinnedAnimationController->SetTrackEnable(2, false);
 	m_pSkinnedAnimationController->SetTrackEnable(3, false);
 	m_pSkinnedAnimationController->SetTrackEnable(4, false);
@@ -358,23 +365,71 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 	m_pSkinnedAnimationController->SetTrackEnable(0, true);
 
 
-	m_pSkinnedAnimationController->SetCallbackKeys(1, 2);
+	AnimationControllers[0]->SetCallbackKeys(1, 1);
+	AnimationControllers[0]->SetCallbackKeys(2, 1);
+	AnimationControllers[0]->SetCallbackKeys(3, 1);
+	AnimationControllers[0]->SetCallbackKeys(4, 1);
+
+
+	AnimationControllers[1]->SetCallbackKeys(1, 1);
+	AnimationControllers[1]->SetCallbackKeys(2, 1);
+	AnimationControllers[1]->SetCallbackKeys(3, 1);
+	AnimationControllers[1]->SetCallbackKeys(4, 1);
+
+
+	AnimationControllers[2]->SetCallbackKeys(1, 1);
+	AnimationControllers[2]->SetCallbackKeys(2, 1);
+	AnimationControllers[2]->SetCallbackKeys(3, 1);
+	AnimationControllers[2]->SetCallbackKeys(4, 1);
+
 #ifdef _WITH_SOUND_RESOURCE
 	m_pSkinnedAnimationController->SetCallbackKey(0, 0.1f, _T("Footstep01"));
 	m_pSkinnedAnimationController->SetCallbackKey(1, 0.5f, _T("Footstep02"));
 	m_pSkinnedAnimationController->SetCallbackKey(2, 0.9f, _T("Footstep03"));
 #else
-	m_pSkinnedAnimationController->SetCallbackKey(1, 0, 0.2f, _T("Sound/Footstep01.wav"));
-	m_pSkinnedAnimationController->SetCallbackKey(1, 1, 0.5f, _T("Sound/Footstep02.wav"));
-	//	m_pSkinnedAnimationController->SetCallbackKey(1, 2, 0.39f, _T("Sound/Footstep03.wav"));
+
+	AnimationControllers[0]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
+	AnimationControllers[0]->SetCallbackKey(2, 0, 0.2f, _T("Sound/swordAttack.wav"));
+	AnimationControllers[0]->SetCallbackKey(3, 0, 0.2f, _T("Sound/run.wav"));
+	AnimationControllers[0]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
+
+
+	AnimationControllers[1]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
+	AnimationControllers[1]->SetCallbackKey(2, 0, 0.2f, _T("Sound/gunAttack.wav"));
+	AnimationControllers[1]->SetCallbackKey(3, 0, 0.2f, _T("Sound/run.wav"));
+	AnimationControllers[1]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
+
+
+	AnimationControllers[2]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
+	AnimationControllers[2]->SetCallbackKey(2, 0, 0.2f, _T("Sound/attack.wav"));
+	AnimationControllers[2]->SetCallbackKey(3, 0, 0.2f, _T("Sound/run.wav"));
+	AnimationControllers[2]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
+
 #endif
 	CAnimationCallbackHandler* pAnimationCallbackHandler = new CSoundCallbackHandler();
-	m_pSkinnedAnimationController->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+
+	AnimationControllers[0]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+	AnimationControllers[0]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+	AnimationControllers[0]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
+	AnimationControllers[0]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
+
+	AnimationControllers[1]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+	AnimationControllers[1]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+	AnimationControllers[1]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
+	AnimationControllers[1]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
+
+	AnimationControllers[2]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+	AnimationControllers[2]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+	AnimationControllers[2]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
+	AnimationControllers[2]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
-	m_xmOOBB = BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 4, 10));
-	obBox = BoundingOrientedBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 4, 10), XMFLOAT4(0, 0, 0,1) );
+	//m_xmOOBB = BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 4, 10));
+
+	obBox = BoundingOrientedBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(15, 10, 12), XMFLOAT4(0, 0, 0, 1));
+
+
 
 	SetScale(XMFLOAT3(1.0f, 1.0f, 1.0f));
 }
@@ -390,13 +445,13 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 	switch (nNewCameraMode)
 	{
 	case FIRST_PERSON_CAMERA:
-		SetFriction(250.0f);
-		SetGravity(XMFLOAT3(0.0f, -400.0f, 0.0f));
-		SetMaxVelocityXZ(300.0f);
-		SetMaxVelocityY(400.0f);
+		SetFriction(50.0f);
+		SetGravity(XMFLOAT3(0.0f, -5.0f, 0.0f));
+		SetMaxVelocityXZ(10.0f);
+		SetMaxVelocityY(100.f);
 		m_pCamera = OnChangeCamera(FIRST_PERSON_CAMERA, nCurrentCameraMode);
 		m_pCamera->SetTimeLag(0.0f);
-		m_pCamera->SetOffset(XMFLOAT3(0.0f, 20.0f, 0.0f));
+		m_pCamera->SetOffset(XMFLOAT3(0.0f, 20.0f, 5.0f));
 		m_pCamera->GenerateProjectionMatrix(1.01f, 5000.0f, ASPECT_RATIO, 60.0f);
 		m_pCamera->SetViewport(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0.0f, 1.0f);
 		m_pCamera->SetScissorRect(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT);
@@ -417,7 +472,7 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		SetFriction(50.0f);
 		SetGravity(XMFLOAT3(0.0f, -5.0f, 0.0f));
 		SetMaxVelocityXZ(10.0f);
-		SetMaxVelocityY(100.0f);
+		SetMaxVelocityY(100.f);
 		m_pCamera = OnChangeCamera(THIRD_PERSON_CAMERA, nCurrentCameraMode);
 		m_pCamera->SetTimeLag(0.25f);
 		m_pCamera->SetOffset(XMFLOAT3(0.0f, 40.0f, -100.0f));
@@ -440,90 +495,6 @@ void CTerrainPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVeloci
 	CPlayer::Move(dwDirection, fDistance, bUpdateVelocity);
 }
 
-void CTerrainPlayer::playerAttack(int whatPlayer, CGameObject* pLockedObject, CGameObject*** bulletTmp)
-{
-	CGameObject* pBulletObject = NULL;
-
-	if (true == onAttack)
-	{
-		m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		m_pSkinnedAnimationController->SetTrackEnable(1, false);
-		m_pSkinnedAnimationController->SetTrackEnable(2, true);
-		m_pSkinnedAnimationController->SetTrackEnable(3, false);
-		m_pSkinnedAnimationController->SetTrackEnable(4, false);
-		m_pSkinnedAnimationController->SetTrackEnable(5, false);
-
-		if (2 == whatPlayer)
-		{
-
-			//for (int i = 0; i < BULLETS; i++)
-			for (int i = 0; i < 1; i++)
-			{
-				if (!(*bulletTmp)[i]->m_bActive)
-				{
-					pBulletObject = (*bulletTmp)[i];
-					break;
-				}
-			}
-
-			if (pBulletObject)
-			{
-				XMFLOAT3 xmf3Position = GetPosition();
-				//XMFLOAT3 xmf3Direction = GetUp();
-				XMFLOAT3 xmf3Direction = GetLook();
-				XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
-
-				pBulletObject->m_xmf4x4World = m_xmf4x4World;
-				pBulletObject->SetFirePosition(XMFLOAT3(xmf3FirePosition.x, xmf3FirePosition.y + 15, xmf3FirePosition.z));
-				pBulletObject->SetMovingDirection(xmf3Direction);
-				pBulletObject->SetActive(true);
-
-				if (pLockedObject)
-				{
-					pBulletObject->m_pLockedObject = pLockedObject;
-				}
-			}
-		}
-	}
-}
-void CTerrainPlayer::playerRun()
-{
-	if (true == onRun)
-	{
-		m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		m_pSkinnedAnimationController->SetTrackEnable(1, false);
-		m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		m_pSkinnedAnimationController->SetTrackEnable(3, true);
-		m_pSkinnedAnimationController->SetTrackEnable(4, false);
-		m_pSkinnedAnimationController->SetTrackEnable(5, false);
-	}
-}
-void CTerrainPlayer::playerDie()
-{
-	if (true == onDie)
-	{
-		m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		m_pSkinnedAnimationController->SetTrackEnable(1, false);
-		m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		m_pSkinnedAnimationController->SetTrackEnable(3, false);
-		m_pSkinnedAnimationController->SetTrackEnable(4, true);
-		m_pSkinnedAnimationController->SetTrackEnable(5, false);
-	}
-}
-
-void CTerrainPlayer::playerCollect()
-{
-
-	if (true == onCollect)
-	{
-		m_pSkinnedAnimationController->SetTrackEnable(0, false);
-		m_pSkinnedAnimationController->SetTrackEnable(1, false);
-		m_pSkinnedAnimationController->SetTrackEnable(2, false);
-		m_pSkinnedAnimationController->SetTrackEnable(3, false);
-		m_pSkinnedAnimationController->SetTrackEnable(4, false);
-		m_pSkinnedAnimationController->SetTrackEnable(5, true);
-	}
-}
 
 
 void CTerrainPlayer::Update(float fTimeElapsed)
@@ -531,34 +502,206 @@ void CTerrainPlayer::Update(float fTimeElapsed)
 	CPlayer::Update(fTimeElapsed);
 }
 
-void CTerrainPlayer::otherPlayerUpdate(float fTimeElapsed)//0226
+SoundPlayer::SoundPlayer()
+	: xAudio2_(nullptr), masterVoice_(nullptr), sourceVoice_(nullptr)
 {
-	XMFLOAT3 xmf3Velocity = Vector3::ScalarProduct(m_xmf3Velocity, fTimeElapsed, false);
-	CPlayer::Move(xmf3Velocity, false);
-
-	//if (m_pSkinnedAnimationController)
-	//{
-	//	float fLength = sqrtf(m_xmf3Velocity.x * m_xmf3Velocity.x + m_xmf3Velocity.z * m_xmf3Velocity.z);
-	//	if (::IsZero(fLength))//플레이어 좌표에 변화가 없을 때
-	//	{
-	//		if (false == m_pSkinnedAnimationController->m_pAnimationTracks[2].m_bEnable &&
-	//			false == m_pSkinnedAnimationController->m_pAnimationTracks[3].m_bEnable &&
-	//			false == m_pSkinnedAnimationController->m_pAnimationTracks[4].m_bEnable &&
-	//			false == m_pSkinnedAnimationController->m_pAnimationTracks[5].m_bEnable)
-	//			//if (!onAttack && !onRun && !onDie &&!onCollect)//플레이어가 공격 모드가 아닐 때
-	//		{
-
-	//			if (false == m_pSkinnedAnimationController->m_pAnimationTracks[0].m_bEnable)
-	//				m_pSkinnedAnimationController->SetTrackEnable(0, true);
-
-	//			m_pSkinnedAnimationController->SetTrackEnable(1, false);
-	//			m_pSkinnedAnimationController->SetTrackEnable(2, false);
-	//			m_pSkinnedAnimationController->SetTrackEnable(3, false);
-	//			m_pSkinnedAnimationController->SetTrackEnable(4, false);
-	//			m_pSkinnedAnimationController->SetTrackEnable(5, false);
-
-	//			m_pSkinnedAnimationController->SetTrackPosition(1, 0.0f);
-	//		}
-	//	}
-	//}
+	ZeroMemory(&waveFormat_, sizeof(waveFormat_));
+	ZeroMemory(&buffer_, sizeof(buffer_));
 }
+
+SoundPlayer::~SoundPlayer()
+{
+	Terminate();
+}
+
+bool SoundPlayer::Initialize()
+{
+	HRESULT hr;
+
+
+	// XAudio2 객체 생성
+	hr = XAudio2Create(&xAudio2_, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	if (FAILED(hr)) {
+		return false;
+	}
+
+
+
+	// 마스터 보이스 생성
+	hr = xAudio2_->CreateMasteringVoice(&masterVoice_);
+	if (FAILED(hr)) {
+		return false;
+	}
+
+
+	waveFormat_.wFormatTag = WAVE_FORMAT_PCM;
+	waveFormat_.nChannels = 2;
+	waveFormat_.nSamplesPerSec = 48000;
+	waveFormat_.nAvgBytesPerSec = 48000 * 4;
+	waveFormat_.nBlockAlign = 4;
+	waveFormat_.wBitsPerSample = 16;
+	waveFormat_.cbSize = 0;
+
+
+	// 소스 보이스 생성
+	hr = xAudio2_->CreateSourceVoice(&sourceVoice_, &waveFormat_);
+	if (FAILED(hr)) {
+		return false;
+	}
+
+	return true;
+}
+
+void SoundPlayer::Terminate()
+{
+	if (sourceVoice_ != nullptr) {
+		sourceVoice_->DestroyVoice();
+		sourceVoice_ = nullptr;
+	}
+
+
+	if (masterVoice_ != nullptr) {
+		masterVoice_->DestroyVoice();
+		masterVoice_ = nullptr;
+	}
+
+	if (xAudio2_ != nullptr) {
+		xAudio2_->Release();
+		xAudio2_ = nullptr;
+	}
+}
+
+HRESULT SoundPlayer::LoadWaveFile(const wchar_t* filename)
+{
+	// WAV 파일을 읽기 전용으로 열기
+	FILE* file = nullptr;
+	errno_t err = _wfopen_s(&file, filename, L"rb");
+	if (err != 0)
+	{
+		return HRESULT_FROM_WIN32(err);
+	}
+
+	// WAV 파일 헤더 읽기
+	WAVEHEADER header;
+	size_t bytesRead = fread(&header, 1, sizeof(WAVEHEADER), file);
+	if (bytesRead != sizeof(WAVEHEADER))
+	{
+		fclose(file);
+		return E_FAIL;
+	}
+
+	// WAV 파일 검증
+	if (memcmp(header.chunkId, "RIFF", 4) != 0 ||//0501
+		memcmp(header.format, "WAVE", 4) != 0 ||
+		memcmp(header.subchunk1Id, "fmt ", 4) != 0 ||
+		memcmp(header.subchunk2Id, "data", 4) != 0)
+	{
+		fclose(file);
+		return E_FAIL;
+	}
+
+	// 웨이브 형식 정보 읽기
+	WAVEFORMATEX* pWaveFormat = (WAVEFORMATEX*)malloc(header.subchunk1Size);
+	if (!pWaveFormat)
+	{
+		fclose(file);
+		return E_OUTOFMEMORY;
+	}
+
+	bytesRead = fread(pWaveFormat, 1, header.subchunk1Size, file);
+	if (bytesRead != header.subchunk1Size)
+	{
+		free(pWaveFormat);
+		fclose(file);
+		return E_FAIL;
+	}
+
+	// 버퍼 데이터 읽기
+	BYTE* pData = (BYTE*)malloc(header.subchunk2Size);
+	if (!pData)
+	{
+		free(pWaveFormat);
+		fclose(file);
+		return E_OUTOFMEMORY;
+	}
+
+	bytesRead = fread(pData, 1, header.subchunk2Size, file);
+	if (bytesRead != header.subchunk2Size)
+	{
+		//free(pWaveFormat);
+		//free(pData);
+		//fclose(file);
+		//return E_FAIL;//0506
+	}
+
+	// 반환값 설정
+	waveFormat_ = *pWaveFormat;
+	buffer_.pAudioData = pData;
+	buffer_.AudioBytes = header.subchunk2Size;
+
+	buffer_.Flags = XAUDIO2_END_OF_STREAM; // 스트림의 끝임을 나타냄
+	buffer_.LoopCount = XAUDIO2_LOOP_INFINITE; // 루프 횟수를 무한대로 설정
+
+
+	// 파일 닫기
+	fclose(file);
+
+	return S_OK;
+}
+
+bool SoundPlayer::LoadWave(const wchar_t* filename)
+{
+	HRESULT hr;
+	// WAVE 파일 로드
+	hr = LoadWaveFile(filename);
+
+
+	if (FAILED(hr)) {
+		return false;
+	}
+
+	//sourceVoice_ = nullptr;//0506
+
+	if (nullptr == sourceVoice_)
+	{
+		if (false ==Initialize())
+		{
+			// 소스 보이스 생성
+			hr = xAudio2_->CreateSourceVoice(&sourceVoice_, &waveFormat_);
+			if (FAILED(hr)) {
+				cout << "323호에서 오류나면 소스 보이스 생성" << endl;
+				return false;
+			}	
+		}
+
+		//Initialize();
+	}
+
+	// 소스 보이스에 버퍼 설정
+	hr = sourceVoice_->SubmitSourceBuffer(&buffer_);//0504
+	if (FAILED(hr)) {
+		return false;
+	}
+
+	return true;
+}
+
+void SoundPlayer::Play()
+{
+	// 소스 보이스 재생
+	if (sourceVoice_)
+		sourceVoice_->Start();
+}
+
+void SoundPlayer::Stop()
+{
+	if (sourceVoice_)
+	{
+		// 소스 보이스 중지
+		sourceVoice_->Stop();
+		sourceVoice_->FlushSourceBuffers();
+	}
+	//Terminate();
+}
+
+

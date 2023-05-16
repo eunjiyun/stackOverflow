@@ -51,6 +51,10 @@ void LoadMeshFromFile(MapObject& obj, char* pstrFileName)
     ::fclose(pFile);
 }
 
+//int min_x = 0;
+//int max_x = 0;
+//int min_z = 0;
+//int max_z = 0;
 MapObject** LoadGameObjectsFromFile(char* pstrFileName, int* pnGameObjects)
 {
     FILE* pFile = NULL;
@@ -72,6 +76,7 @@ MapObject** LoadGameObjectsFromFile(char* pstrFileName, int* pnGameObjects)
     size_t nConverted = 0;
     int	nTextureNumber = 0;
     int iCount = 0;
+
 
     nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
     nReads = (UINT)::fread(pstrToken1, sizeof(char), nStrLength, pFile); //"<GameObjects>:"
@@ -134,7 +139,7 @@ MapObject** LoadGameObjectsFromFile(char* pstrFileName, int* pnGameObjects)
             {
                 nReads = (UINT)::fread(&nEmissionTextureStrLength, sizeof(BYTE), 1, pFile);
                 nReads = (UINT)::fread(strEmissionTextureName, sizeof(char), nEmissionTextureStrLength, pFile);
-                cout << pstrToken6 << strEmissionTextureName << endl << endl;
+                //cout << pstrToken6 << strEmissionTextureName << endl << endl;
             }
         }
 
@@ -151,10 +156,20 @@ MapObject** LoadGameObjectsFromFile(char* pstrFileName, int* pnGameObjects)
 
         pGameObject->m_xmOOBB.Transform(pGameObject->m_xmOOBB, XMLoadFloat4x4(&pGameObject->m_xmf4x4World));
 
+        //cout << pGameObject->m_pstrName << endl;
+        //if (min_x > pGameObject->m_xmOOBB.Center.x - pGameObject->m_xmOOBB.Extents.x) min_x = pGameObject->m_xmOOBB.Center.x - pGameObject->m_xmOOBB.Extents.x;
+        //if (max_x < pGameObject->m_xmOOBB.Center.x + pGameObject->m_xmOOBB.Extents.x) max_x = pGameObject->m_xmOOBB.Center.x + pGameObject->m_xmOOBB.Extents.x;
+        //if (min_z > pGameObject->m_xmOOBB.Center.z - pGameObject->m_xmOOBB.Extents.z) min_z = pGameObject->m_xmOOBB.Center.z - pGameObject->m_xmOOBB.Extents.z;
+        //if (max_z < pGameObject->m_xmOOBB.Center.z + pGameObject->m_xmOOBB.Extents.z) max_z = pGameObject->m_xmOOBB.Center.z + pGameObject->m_xmOOBB.Extents.z;
+        //cout << pGameObject->m_pstrName << endl;
+        //Vector3::Print(pGameObject->m_xmOOBB.Center);
+        //Vector3::Print(pGameObject->m_xmOOBB.Extents);
+        //cout << endl;
+
         ppGameObjects[i] = pGameObject;
 
     }
-
+    //cout << min_x << ", " << max_x << ", " << min_z << ", " << max_z << endl;
     ::fclose(pFile);
 
     return(ppGameObjects);
