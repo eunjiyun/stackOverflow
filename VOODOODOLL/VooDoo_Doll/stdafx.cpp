@@ -7,6 +7,7 @@
 UINT gnCbvSrvDescriptorIncrementSize = 0;
 UINT gnRtvDescriptorIncrementSize = 0;
 UINT gnDsvDescriptorIncrementSize = 0;
+UINT gnCbvSrvUavDescriptorIncrementSize = 0;
 
 void WaitForGpuComplete(ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, UINT64 nFenceValue, HANDLE hFenceEvent)
 {
@@ -73,6 +74,26 @@ ID3D12Resource* CreateTextureResource(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 	{
 		D3D12_RESOURCE_STATES d3dResourceInitialStates = (ppd3dUploadBuffer && pData) ? D3D12_RESOURCE_STATE_COPY_DEST : d3dResourceStates;
 		HRESULT hResult = pd3dDevice->CreateCommittedResource(&d3dHeapPropertiesDesc, D3D12_HEAP_FLAG_NONE, &d3dResourceDesc, d3dResourceInitialStates, NULL, __uuidof(ID3D12Resource), (void**)&pd3dBuffer);
+
+		if (hResult == DXGI_ERROR_DEVICE_REMOVED)
+		{
+			// GPU 장치 인스턴스가 중단되었으므로, 정확한 이유를 얻기 위해 GetDeviceRemovedReason 함수 사용
+			HRESULT removedReason = pd3dDevice->GetDeviceRemovedReason();
+
+			// removedReason을 사용하여 적절한 작업 수행
+			// 예: 오류 메시지 출력, 오류 로그 기록, 재시작 등
+
+			printf("Error1: removedReason 0x%X\n", removedReason);
+			// 또는 printf("Error: %s\n", DXGetErrorString(hResult)); 와 같이 DXGetErrorString 함수를 사용하여 HRESULT를 문자열로 변환할 수도 있습니다.
+		}
+		else if (FAILED(hResult))
+		{
+			// 그 외의 오류 처리
+
+			printf("Error2: HRESULT 0x%X\n", hResult);
+			// 또는 printf("Error: %s\n", DXGetErrorString(hResult)); 와 같이 DXGetErrorString 함수를 사용하여 HRESULT를 문자열로 변환할 수도 있습니다.
+		}
+
 		if (ppd3dUploadBuffer && pData)
 		{
 			d3dHeapPropertiesDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -303,7 +324,7 @@ ID3D12Resource* CreateTextureResourceFromWICFile(ID3D12Device* pd3dDevice, ID3D1
 }
 
 
-CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, int* pnGameObjects)//0220
+CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, int* pnGameObjects)
 {
 	FILE* pFile = NULL;
 
@@ -339,7 +360,7 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 	CGameObject* pGameObject = NULL, * pObjectFound = NULL;
 
-	for (int i = 0; i < *pnGameObjects; i++)
+	for (int i{}; i < *pnGameObjects; ++i)
 	{
 		char pstrToken3[64] = { '\0' };
 		char pstrToken4[64] = { '\0' };
@@ -360,11 +381,11 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 		pGameObject->m_ppMaterials = new CMaterial * [nMaterials];
 
-		for (unsigned m = 0; m < nMaterials; m++) 
+		for (unsigned m{}; m < nMaterials; ++m)
 			pGameObject->m_ppMaterials[m] = NULL;
 
 		CGameObject* pObjectFound = NULL;
-		for (int j = 0; j < i; j++)
+		for (int j{}; j < i; ++j)
 		{
 			if (!strcmp(pstrGameObjectName, ppGameObjects[j]->m_pstrName))
 			{
@@ -372,7 +393,7 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 				pGameObject->SetMesh(0, ppGameObjects[j]->m_ppMeshes[0]);
 
-				for (UINT k = 0; k < nMaterials; k++)
+				for (UINT k{}; k < nMaterials; ++k)
 				{
 					pGameObject->SetMaterial(k, ppGameObjects[j]->m_ppMaterials[k]);
 				}
@@ -383,7 +404,7 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 
 		XMFLOAT4 xmf4AlbedoColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), xmf4EmissionColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		for (UINT k = 0; k < nMaterials; k++)
+		for (UINT k{}; k < nMaterials; ++k)
 		{
 
 			if (!pObjectFound) pGameObject->SetMaterial(k, rand() % MAX_Scene_MATERIALS);
@@ -440,9 +461,8 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 		strcpy_s(pstrFilePath + 7, 64 - 7, pstrGameObjectName);
 		strcpy_s(pstrFilePath + 7 + nObjectNameLength, 64 - 7 - nObjectNameLength, ".bin");
 		pGameObject->m_iObjID = iObjectID;
-		CMesh* pMesh = new CMesh(pd3dDevice, pd3dCommandList, pstrFilePath);
+		CMesh* pMesh = new CMesh(pd3dDevice, pd3dCommandList, pstrFilePath, i);
 
-		//cout << i<<"	:>	"<<pGameObject->m_pstrName << endl;
 
 		pGameObject->SetMesh(0, pMesh);
 
@@ -453,10 +473,10 @@ CGameObject** LoadGameObjectsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 		/*printf("Orientation: (%f, %f, %f, %f)\n", pGameObject->m_ppMeshes[0]->OBBox.Orientation.x,
 			pGameObject->m_ppMeshes[0]->OBBox.Orientation.y, pGameObject->m_ppMeshes[0]->OBBox.Orientation.z, pGameObject->m_ppMeshes[0]->OBBox.Orientation.w);*/
 
-		//	cout << "\nCenter: " << pGameObject->m_ppMeshes[0]->OBBox.Center.x << ", " << pGameObject->m_ppMeshes[0]->OBBox.Center.y << ", " << pGameObject->m_ppMeshes[0]->OBBox.Center.z <<
-		//		"\nExtents: " << pGameObject->m_ppMeshes[0]->OBBox.Extents.x << ", " << pGameObject->m_ppMeshes[0]->OBBox.Extents.y << ", " << pGameObject->m_ppMeshes[0]->OBBox.Extents.z << endl << endl << endl;
-		//
-		
+			//	cout << "\nCenter: " << pGameObject->m_ppMeshes[0]->OBBox.Center.x << ", " << pGameObject->m_ppMeshes[0]->OBBox.Center.y << ", " << pGameObject->m_ppMeshes[0]->OBBox.Center.z <<
+			//		"\nExtents: " << pGameObject->m_ppMeshes[0]->OBBox.Extents.x << ", " << pGameObject->m_ppMeshes[0]->OBBox.Extents.y << ", " << pGameObject->m_ppMeshes[0]->OBBox.Extents.z << endl << endl << endl;
+			//
+
 		ppGameObjects[i] = pGameObject;
 		++iObjectID;
 	}

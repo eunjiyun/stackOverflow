@@ -2,12 +2,12 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\user\Desktop\Graduation_Work\VOODOODOLL\x64\Debug\VooDoo_Doll.exe</FullPath>
+      <FullPath>C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\x64\Debug\VooDoo_Doll.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles>
     <ContentFile>
-      <FullPath>C:\Users\user\Desktop\Graduation_Work\VOODOODOLL\x64\Debug\Shaders.cso</FullPath>
+      <FullPath>C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\x64\Debug\Shaders.cso</FullPath>
     </ContentFile>
   </ContentFiles>
   <SatelliteDlls />

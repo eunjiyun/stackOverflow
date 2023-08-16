@@ -1,8 +1,46 @@
 ﻿  GameFramework.cpp
-C:\Users\user\Desktop\stackOverflow\VOODOODOLL\VooDoo_Doll\GameFramework.cpp(1516,31): warning C4267: '초기화 중': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+  Object.cpp
+  Player.cpp
+  Shader.cpp
+  Stage.cpp
+  VooDoo_Doll.cpp
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Stage.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(712,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1470,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,35): warning C4838: 'float'에서 'LONG'(으)로의 변환에는 축소 변환이 필요합니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,35): warning C4244: '초기화 중': 'float'에서 'LONG'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,41): warning C4838: 'float'에서 'LONG'(으)로의 변환에는 축소 변환이 필요합니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,41): warning C4244: '초기화 중': 'float'에서 'LONG'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,51): warning C4838: 'float'에서 'LONG'(으)로의 변환에는 축소 변환이 필요합니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,51): warning C4244: '초기화 중': 'float'에서 'LONG'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,65): warning C4838: 'float'에서 'LONG'(으)로의 변환에는 축소 변환이 필요합니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1533,65): warning C4244: '초기화 중': 'float'에서 'LONG'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(1779,29): warning C4101: 'e' :참조되지 않은 지역 변수입니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(2012,26): warning C4244: '=': 'float'에서 'UINT'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(2013,26): warning C4244: '=': 'float'에서 'UINT'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Shader.cpp(2210,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\VooDoo_Doll.cpp(118,17): warning C4244: '=': 'DWORD'에서 'short'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\VooDoo_Doll.cpp(275,37): warning C4244: '인수': 'WPARAM'에서 '_Ty'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+          with
+          [
+              _Ty=char
+          ]
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\VooDoo_Doll.cpp(284,37): warning C4244: '인수': 'WPARAM'에서 '_Ty'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+          with
+          [
+              _Ty=char
+          ]
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Stage.cpp(607,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\Stage.cpp(1277,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\GameFramework.cpp(579,50): warning C4244: '인수': 'int'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\GameFramework.cpp(584,50): warning C4244: '인수': 'int'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\GameFramework.cpp(1156,52): warning C4244: '인수': 'int'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\GameFramework.cpp(1185,52): warning C4244: '인수': 'int'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\VooDoo_Doll\GameFramework.cpp(1451,28): warning C4101: 'e' :참조되지 않은 지역 변수입니다.
   코드를 생성하고 있습니다.
-  3 of 1407 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
+  35 of 1574 functions ( 2.2%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    12 functions had inline decision re-evaluated but remain unchanged
+    24 functions had inline decision re-evaluated but remain unchanged
   코드를 생성했습니다.
-  VooDoo_Doll.vcxproj -> C:\Users\user\Desktop\stackOverflow\VOODOODOLL\x64\Release\VooDoo_Doll.exe
+  VooDoo_Doll.vcxproj -> C:\Users\UserK\Desktop\Graduation_Work\VOODOODOLL\x64\Release\VooDoo_Doll.exe

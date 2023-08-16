@@ -6,8 +6,8 @@
 #include "Monster.h"
 
 
-enum EVENT_TYPE { EV_MOVE, EV_SUMMON };
-enum DB_EVENT_TYPE { EV_SIGNIN, EV_SIGNUP };
+enum EVENT_TYPE { EV_MONSTER_UPDATE };
+enum DB_EVENT_TYPE { EV_SIGNIN, EV_SIGNUP, EV_SAVE, EV_RESET };
 
 struct TIMER_EVENT {
 	int room_id;
@@ -21,60 +21,106 @@ struct TIMER_EVENT {
 };
 
 struct DB_EVENT {
-	unsigned short session_id;
-	char user_id[20];
-	char user_password[20];
-	int _event;
+	unsigned short session_id = -1;
+	wchar_t user_id[IDPW_SIZE]{};
+	wchar_t user_password[IDPW_SIZE]{};
+	DB_EVENT_TYPE _event;
+	short		cur_stage = -1;
 };
 
-wstring ConverttoWchar(const char* str)
-{
-	int length = static_cast<int>(strlen(str)) + 1;
-	wstring wstr(length, L'\0');
-	size_t converted = 0;
-	mbstowcs_s(&converted, &wstr[0], length, str, _TRUNCATE);
-	return wstr;
-}
+//wstring ConverttoWchar(const char* str)
+//{
+//	int length = static_cast<int>(strlen(str)) + 1;
+//	wstring wstr(length, L'\0');
+//	size_t converted = 0;
+//	mbstowcs_s(&converted, &wstr[0], length, str, _TRUNCATE);
+//	return wstr;
+//}
+
+constexpr int GRID_SIZE_X = 150;  
+constexpr int GRID_SIZE_Y = 2;
+constexpr int GRID_SIZE_Z = 1200;
+constexpr int CELL_SIZE = 4; 
+
+//bool ObstacleGrid[GRID_SIZE_Y][GRID_SIZE_X][GRID_SIZE_Z] = { true };  // Grid to store obstacle information
+
+array<array<array<bool, GRID_SIZE_Z>, GRID_SIZE_X>,GRID_SIZE_Y> ObstacleGrid = { false };
 
 concurrent_priority_queue<TIMER_EVENT> timer_queue;
 concurrent_queue<DB_EVENT> db_queue;
 
 array<array<SESSION, MAX_USER_PER_ROOM>, MAX_ROOM> clients;
-array<threadsafe_vector<Monster*>, MAX_ROOM> PoolMonsters;
+//array<concurrent_unordered_map<short, shared_ptr<SESSION>>, MAX_ROOM> sessions;
+//array<threadsafe_vector<Monster*>, MAX_ROOM> monsters;
+array<array<Monster*, MONSTER_PER_STAGE* STAGE_NUMBERS>, MAX_ROOM> monsters;
 
-//CObjectPool<TIMER_EVENT> EventPool(20'000);
-CObjectPool<Monster> MonsterPool(20'000);
-array<vector<MonsterInfo>, 10> StagesInfo;
+//CObjectPool<TIMER_EVENT> EventPool(30'000);
+//CObjectPool<Monster> MonsterPool(20'000);
+vector<MonsterInfo> StagesInfo;
 
-array<vector< MapObject*>, OBJECT_ARRAY_SIZE> Objects;
+array<vector< MapObject*>, OBJECT_ARRAY_SIZE> Obstacles;
 array<vector<Key_Object>, 7> Key_Items;
 
 SESSION& getClient(int c_id)
 {
-	return clients[c_id / MAX_USER_PER_ROOM][c_id % MAX_USER_PER_ROOM];
+	try {
+		return clients[c_id / MAX_USER_PER_ROOM][c_id % MAX_USER_PER_ROOM];
+	}
+	catch (const exception& e) {
+		cout << "getClient catched error -" << e.what() << endl;
+		exit(0);
+	}
 }
 
-array<SESSION, MAX_USER_PER_ROOM>& getRoom(int c_id)
+array<SESSION, MAX_USER_PER_ROOM>& getRoom_Clients(int c_id)
 {
-	return clients[c_id / MAX_USER_PER_ROOM];
+	try {
+		return clients[c_id / MAX_USER_PER_ROOM];
+	}
+	catch (const exception& e) {
+		cout << "getRoom_Clients catched error -" << e.what() << endl;
+		exit(0);
+	}
 }
 
-threadsafe_vector<Monster*>& getMonsters(int c_id)
+array<Monster*, MONSTER_PER_STAGE* STAGE_NUMBERS>& getRoom_Monsters(int c_id)
 {
-	return PoolMonsters[c_id / MAX_USER_PER_ROOM];
+	try {
+		return monsters[c_id / MAX_USER_PER_ROOM];
+	}
+	catch (const exception& e) {
+		cout << "getRoom_Monsters catched error -" << e.what() << endl;
+		exit(0);
+	}
 }
 
-vector<MapObject*>& getPartialObjects(XMFLOAT3 Pos)
+vector<MapObject*>& getRoom_Obstacles(XMFLOAT3 Pos)
 {
-	return Objects[static_cast<int>(Pos.z) / STAGE_SIZE];
+	try {
+		return Obstacles[static_cast<int>(Pos.z) / STAGE_SIZE];
+	}
+	catch (const exception& e) {
+		cout << "getRoom_Obstacles catched error -" << e.what() << endl;
+		exit(0);
+	}
+}
+
+short get_remain_Monsters(int c_id)
+{
+	short cnt = 0;
+	auto& room_Monsters = getRoom_Monsters(c_id);
+	for (auto& monster : room_Monsters) {
+		if (monster->alive) cnt++;
+	}
+	return cnt;
 }
 
 
 void disconnect(int c_id)
 {
 	bool game_in_progress = false;
-	auto& Monsters = getMonsters(c_id);
-	for (auto& pl : getRoom(c_id)) {
+	auto& Monsters = getRoom_Monsters(c_id);
+	for (auto& pl : getRoom_Clients(c_id)) {
 
 		if ((ST_INGAME != pl._state.load() && ST_DEAD != pl._state.load()) || pl._id == c_id) continue;
 
@@ -84,100 +130,67 @@ void disconnect(int c_id)
 	SESSION& CL = getClient(c_id);
 	closesocket(CL._socket);
 
-	if (game_in_progress) // ¾ÆÁ÷ ¹æ ¾È¿¡ »ç¶÷ÀÌ ÀÖ´Ù¸é 
+	if (game_in_progress) {
 		CL._state.store(ST_CRASHED);
+		//DB_EVENT ev;
+		//ev._event = EV_SAVE;
+		//wcscpy_s(ev.user_id, sizeof(ev.user_id) / sizeof(ev.user_id[0]), CL._name);
+		//ev.cur_stage = CL.cur_stage.load();
+		//ev.session_id = CL._id;
+		//db_queue.push(ev);
+		//wcout << ev.user_id << " CALLED EV_SAVE\n";
+	}
 
-	else {// ¹æÀÌ ºñ¾ú´Ù¸é ¸ó½ºÅÍ¿Í ÇÃ·¹ÀÌ¾î ÄÁÅ×ÀÌ³Ê ¸ðµÎ Á¤¸®
-		for (auto& pl : getRoom(c_id)) {
-			pl._state.store(ST_FREE);
+	else {
+		for (auto& pl : getRoom_Clients(c_id)) {
+			if (pl._state.load() == ST_FREE) continue;
+			pl._state = ST_FREE;
+			//DB_EVENT ev;
+			//ev._event = EV_RESET;
+			//wcscpy_s(ev.user_id, sizeof(ev.user_id) / sizeof(ev.user_id[0]), pl._name);
+			//ev.session_id = pl._id;
+			//db_queue.push(ev);
+			//wcout << ev.user_id << " CALLED EV_RESET\n";
 		}
-		unique_lock<shared_mutex> vec_lock{ Monsters.v_shared_lock };
-		for (auto iter = Monsters.begin(); iter != Monsters.end();) {
-			lock_guard<mutex> mm{ (*iter)->m_lock };
-			MonsterPool.ReturnMemory(*iter);
-			Monsters.erase(iter);
+
+		for (auto& mon : getRoom_Monsters(c_id)) {
+			//bool old_state = true;
+			//if (false == atomic_compare_exchange_strong(&mon->alive, &old_state, false))
+			//	continue;
+			mon->Re_Initialize(StagesInfo[mon->m_id].type, StagesInfo[mon->m_id].Pos);
 		}
-		Monsters.cur_stage = 1;
 	}
 }
 
-void SESSION::send_summon_monster_packet(Monster* M)
+
+void Summon_Monster(int roomNum, int stageNum)
 {
-	SC_SUMMON_MONSTER_PACKET summon_packet;
-	summon_packet.id = M->m_id;
-	summon_packet.size = sizeof(summon_packet);
-	summon_packet.type = SC_SUMMON_MONSTER;
-	summon_packet.Pos = M->GetPosition();
-#ifdef _STRESS_TEST
-	summon_packet.room_num = M->room_num;
-#endif
-	summon_packet.monster_type = M->getType();
-	do_send(&summon_packet);
-}
+	for (int j = 0; j < MAX_USER_PER_ROOM; ++j) {
+		clients[roomNum][j].cur_stage.store(stageNum);
+	}
 
-void SESSION::send_NPCUpdate_packet(Monster* M)
-{
-	SC_MOVE_MONSTER_PACKET p;
-	p.id = M->m_id;
-	p.size = sizeof(SC_MOVE_MONSTER_PACKET);
-	p.type = SC_MOVE_MONSTER;
-	p.target_id = M->target_id;
-	p.Pos = M->GetPosition();
-	p.HP = M->HP;
-	p.is_alive = M->alive;
-	p.animation_track = M->cur_animation_track; // ¿ø·¡ p.animation_track = (short)M->GetState();°¡ ¸Â´Âµ¥ 2¹ø ±Í½ÅÀÌ ¾Ö´Ï¸ÞÀÌ¼ÇÀÌ ºüÁ® ÀÖ¾î¼­ ÀÌ·¸°Ô ÇÔ
-	p.BulletPos = M->MagicPos;
-
-#ifdef _STRESS_TEST
-	p.room_num = M->room_num;
-#endif
-	do_send(&p);
-}
-
-void Initialize_Monster(int roomNum, int stageNum)
-{
-	if (PoolMonsters[roomNum].size() > 0) return;
-
-	unique_lock<shared_mutex> vec_lock{ PoolMonsters[roomNum].v_shared_lock };
-	for (auto& info : StagesInfo[stageNum - 1]) {
-		Monster* M = MonsterPool.GetMemory();
-		M->Initialize(roomNum, info.id, info.type, info.Pos);
-		PoolMonsters[roomNum].emplace_back(M);
-		for (int i = 0; i < MAX_USER_PER_ROOM; ++i) {
-			if (clients[roomNum][i]._state.load() == ST_INGAME || clients[roomNum][i]._state.load() == ST_DEAD) {
-				clients[roomNum][i].cur_stage.store(stageNum);
-				clients[roomNum][i].send_summon_monster_packet(M);
+	for (int i = (stageNum - 1) * MONSTER_PER_STAGE; i < stageNum * MONSTER_PER_STAGE; ++i) {
+		bool old_state = false;
+		if (false == atomic_compare_exchange_strong(&monsters[roomNum][i]->alive, &old_state, true))
+			continue;
+		for (int j = 0; j < MAX_USER_PER_ROOM; ++j) {
+			if (clients[roomNum][j]._state.load() == ST_INGAME || clients[roomNum][j]._state.load() == ST_DEAD) {
+				clients[roomNum][j].send_summon_monster_packet(monsters[roomNum][i]);
 			}
 		}
-		TIMER_EVENT ev{ roomNum, M->m_id, high_resolution_clock::now(), EV_MOVE };
-		//TIMER_EVENT* ev = EventPool.GetMemory();
-		//ev->room_id = roomNum;
-		//ev->obj_id = M->m_id;
-		//ev->wakeup_time = high_resolution_clock::now();
-		//ev->event_id = EV_MOVE;
+		TIMER_EVENT ev{ roomNum, monsters[roomNum][i]->m_id, high_resolution_clock::now(), EV_MONSTER_UPDATE };
 		timer_queue.push(ev);
 	}
-	if (PoolMonsters[roomNum].size() > 10) cout << roomNum << "¿¡¼­ ´õºí¼ÒÈ¯ÀÌ µÇ¾î¹ö¸²\n";
 }
-	
 
 void SESSION::CheckPosition(XMFLOAT3 newPos)
 {
-	// check velocity
-	static const float max_distance_squared = 10000.f;
-	XMFLOAT3 Distance = Vector3::Subtract(newPos, GetPosition());
-	float distance_squared = Distance.x * Distance.x + Distance.z * Distance.z;
-	if (distance_squared > max_distance_squared) {
-		m_xmf3Velocity = XMFLOAT3{ 0,0,0 };
-		return;
-	}
 
-	XMFLOAT3 newCenter = newPos; // Ä³¸¯ÅÍÀÇ À§Ä¡¿Í Ãæµ¹¹Ú½ºÀÇ À§Ä¡ÀÇ Â÷ÀÌ ¶§¹®¿¡ Ãæµ¹Ã¼Å©´Â yÃà +10ÇØ¼­ °è»êÇØ¾ßÇÔ
-	newCenter.y += 10.f;
+	XMFLOAT3 newCenter = Vector3::Add(newPos, XMFLOAT3(0,10.f,0));			// Ä³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½æµ¹ï¿½Ú½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½æµ¹Ã¼Å©ï¿½ï¿½ yï¿½ï¿½ +10ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½
 	try {
-		for (const auto& object : Objects.at(static_cast<int>(newCenter.z) / AREA_SIZE)) {	// arrayÀÇ ¸â¹öÇÔ¼ö atÀº Àß¸øµÈ ÀÎµ¦½º·Î Á¢±ÙÇÏ¸é exceptionÀ» È£Ãâ
+		for (const auto& object : Obstacles.at(static_cast<int>(newCenter.z) / AREA_SIZE)) {	// arrayï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ atï¿½ï¿½ ï¿½ß¸ï¿½ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ exceptionï¿½ï¿½ È£ï¿½ï¿½
 			if (object->m_xmOOBB.Contains(XMLoadFloat3(&newCenter))) {
-				m_xmf3Velocity = XMFLOAT3{ 0,0,0 };
+				SetVelocity(XMFLOAT3{ 0,0,0 });
 				return;
 			}
 		}
@@ -193,20 +206,21 @@ void SESSION::CheckPosition(XMFLOAT3 newPos)
 	SetPosition(newPos);
 	UpdateBoundingBox();
 	short stage = 0;
-	if (GetPosition().y >= -100.f)
+	if (GetPosition().y >= -100.f)	// 1ï¿½ï¿½ 2ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		stage = static_cast<short>((GetPosition().z - 300.f) / STAGE_SIZE);
 	else
 		stage = 3 + static_cast<short>((MAP_Z_SIZE - GetPosition().z) / STAGE_SIZE);
 
-	if (stage == 6 && GetPosition().z < 400.f && getMonsters(_id).size() <= 0) {
-		cout << "CLEAR\n";
-		for (auto& cl : getRoom(_id))
+	if (stage == 6 && GetPosition().z < 400.f && get_remain_Monsters(_id) == 0) {
+		for (auto& cl : getRoom_Clients(_id)) {
+			if (cl._state.load() != ST_INGAME) continue;
 			cl.send_clear_packet();
+		}
 		return;
 	}
 
 	if (stage > cur_stage.load()) {
-		Initialize_Monster(_id / MAX_USER_PER_ROOM, stage);
+		Summon_Monster(_id / MAX_USER_PER_ROOM, stage);
 	}
 }
 
@@ -223,134 +237,310 @@ int get_new_client_id()
 
 
 
-void SESSION::Update()
+void SESSION::Update(CS_HEARTBEAT_PACKET* packet)
 {
+	direction.store(packet->direction);
+	SetVelocity(packet->vel);
+	CheckPosition(packet->pos);
+#ifdef _STRESS_TEST
+	recent_updateTime = packet->move_time;
+#endif
 }
 
 
-bool Monster::check_path(const XMFLOAT3& _pos, unordered_set<XMFLOAT3, XMFLOAT3Hash, XMFLOAT3Equal>& CloseList, BoundingBox& check_box)
+
+
+short Heuristic(const XMFLOAT3& start, const XMFLOAT3& dest) {
+	return abs(dest.z - start.z) + abs(dest.x - start.x);
+}
+
+
+bool Monster::check_path(const XMFLOAT3& _pos, unordered_set<XMFLOAT3, PointHash, PointEqual>& CloseList, BoundingBox& check_box)
 {
 	int collide_range_z = static_cast<int>(_pos.z / AREA_SIZE);
 	check_box.Center = _pos;
 
-	if (CloseList.find(_pos) != CloseList.end()) {
+	if (CloseList.count(_pos)) {
 		return false;
 	}
 
-	if (_pos.x < 0 || _pos.z < 0 || _pos.x > MAP_X_SIZE || _pos.z > MAP_Z_SIZE) return false;
-
-	if (Objects[collide_range_z].end() != find_if(Objects[collide_range_z].begin(), Objects[collide_range_z].end(),
-		[check_box](MapObject* MO) {return MO->m_xmOOBB.Intersects(check_box); }))
-	{
-		return false;
+	for (auto& monster : monsters[room_num]) {
+		if (monster->alive.load() == false || monster->m_id == m_id) continue;
+		if (monster->BB.Intersects(check_box))
+			return false;
 	}
 
-	return true;
-}
-
-unordered_map<XMFLOAT3, shared_ptr<A_star_Node>, XMFLOAT3Hash, XMFLOAT3Equal>::iterator getNode(unordered_map<XMFLOAT3, shared_ptr<A_star_Node>, XMFLOAT3Hash, XMFLOAT3Equal>& m_List)
-{
 	try {
-		return min_element(m_List.begin(), m_List.end(),
-			[](const pair<const XMFLOAT3, shared_ptr<A_star_Node>>& p1, const pair<const XMFLOAT3, shared_ptr<A_star_Node>>& p2)
-			{
-				if (p1.second && p2.second)
-					return p1.second->F < p2.second->F;
-				else {
-					return false;
-				}
-			});
+		if (m_id < 20) {
+			if (ObstacleGrid[0].at(int(_pos.x) / CELL_SIZE).at(int(_pos.z) / CELL_SIZE) == false)
+				return false;
+		}
+		else {
+			if (ObstacleGrid[1].at(int(_pos.x) / CELL_SIZE).at(int(_pos.z) / CELL_SIZE) == false)
+				return false;
+		}
 	}
 	catch (const exception& e) {
-		cout << "openlist access error - " << e.what() << endl;
-		return m_List.end();
-	}
-}
-
-bool check_openList(XMFLOAT3& _Pos, float _G, shared_ptr<A_star_Node> s_node, unordered_map<XMFLOAT3, shared_ptr<A_star_Node>, XMFLOAT3Hash, XMFLOAT3Equal>& m_List)
-{
-	auto iter = m_List.find(_Pos);
-	if (iter != m_List.end()) {
-		if ((*iter).second->G > _G) {
-			(*iter).second->G = _G;
-			(*iter).second->F = (*iter).second->G + (*iter).second->H;
-			(*iter).second->parent = s_node;
-		}
+		//cout << "array access error - " << _pos.x << ", " << _pos.z << endl;
 		return false;
 	}
+
 	return true;
 }
 
 float nx[8]{ -1,1,0,0, -1, -1, 1, 1 };
 float nz[8]{ 0,0,1,-1, -1, 1, -1, 1 };
-XMFLOAT3 Monster::Find_Direction(float fTimeElapsed, XMFLOAT3 start_Pos, XMFLOAT3 dest_Pos)
+XMFLOAT3 Monster::Find_Direction(float fTimeElapsed, XMFLOAT3 start, XMFLOAT3 dest)
 {
-	unordered_set<XMFLOAT3, XMFLOAT3Hash, XMFLOAT3Equal> closelist{};
-	unordered_map<XMFLOAT3, shared_ptr<A_star_Node>, XMFLOAT3Hash, XMFLOAT3Equal> openlist;
-	openlist.reserve(200);
-	closelist.reserve(600);
-	shared_ptr<A_star_Node> S_Node;
+	if (Vector3::Compare(start, dest)) return Pos;
 
-	openlist.emplace(start_Pos, make_shared<A_star_Node>(start_Pos, dest_Pos, 0.f, nullptr));
-	
-	BoundingBox CheckBox = BoundingBox(start_Pos, BB.Extents);
-	while (!openlist.empty())
+	auto start_time = high_resolution_clock::now();
+	unordered_set<XMFLOAT3, PointHash, PointEqual> closelist{};
+	unordered_map<XMFLOAT3, shared_ptr<A_star_Node>, PointHash, PointEqual> openlist;
+	priority_queue<shared_ptr<A_star_Node>, vector<shared_ptr<A_star_Node>>, CompareNodes> pq;
+
+	shared_ptr<A_star_Node> startNode = make_shared<A_star_Node>(start, 0.f, Heuristic(start, dest), nullptr);
+	openlist.insert(make_pair(start, startNode));
+	pq.push(startNode);
+
+	BoundingBox CheckBox = BoundingBox(start, BB.Extents);
+	while (!pq.empty())
 	{
-		auto iter = getNode(openlist);
+		if (duration_cast<milliseconds>(high_resolution_clock::now() - start_time).count() > 3) break;
+		shared_ptr<A_star_Node> S_Node = pq.top();
+		pq.pop();
+		//if (S_Node == nullptr) break;
 
-		S_Node = (*iter).second;
-
-		if (Vector3::Length(Vector3::Subtract(clients[room_num][target_id].GetPosition(), S_Node->Pos)) < 30)
+		if (Vector3::Length(Vector3::Subtract(dest, S_Node->Pos)) < min(attack_range,MELEE_ATTACK_RANGE))
 		{
 			while (S_Node->parent != nullptr)
 			{
-				if (Vector3::Compare(S_Node->parent->Pos, start_Pos))
+				if (Vector3::Compare(S_Node->parent->Pos, start))
 				{
-					return S_Node->Pos;
+					XMFLOAT3 next_pos = S_Node->Pos;
+					return next_pos;
 				}
 				S_Node = S_Node->parent;
 			}
 		}
+
+		closelist.insert(S_Node->Pos);
+
 		for (int i = 0; i < 8; i++) {
-			XMFLOAT3 _Pos = Vector3::Add(S_Node->Pos, Vector3::ScalarProduct(XMFLOAT3{ nx[i],0,nz[i] }, speed * fTimeElapsed, false));
+			XMFLOAT3 near_pos = Vector3::Add(S_Node->Pos, Vector3::ScalarProduct(XMFLOAT3{ nx[i],0,nz[i] }, speed * fTimeElapsed, false));
+
+			if (check_path(near_pos, closelist, CheckBox) == false)
+				continue;
+
 			float _G = S_Node->G + speed * fTimeElapsed * sqrt(abs(nx[i]) + abs(nz[i]));
-			if (check_path(_Pos, closelist, CheckBox) && check_openList(_Pos, _G, S_Node, openlist)) {
-				openlist.emplace(_Pos, make_shared<A_star_Node>(_Pos, dest_Pos, _G, S_Node));
+
+			auto neighborIter = openlist.find(near_pos);
+			if (neighborIter == openlist.end()) {
+				float neighborH = Heuristic(near_pos, dest);
+				shared_ptr<A_star_Node> neighborNode = make_shared<A_star_Node>(near_pos, _G, neighborH, S_Node);
+				openlist.insert(make_pair(near_pos, neighborNode));
+				pq.push(neighborNode);
+			}
+			else if (_G < neighborIter->second->G)
+			{
+				float neighborH = Heuristic(near_pos, dest);
+				neighborIter->second->G = _G;
+				neighborIter->second->H = neighborH;
+				neighborIter->second->F = _G + neighborH;
+				neighborIter->second->parent = S_Node;
 			}
 		}
-		closelist.emplace(S_Node->Pos);
-		openlist.erase(iter);
 	}
-	//cout << "Trace Failed\n";
-	SetState(NPC_State::Idle);
-	cur_animation_track = 0;
-	target_id = -1;
+	wander = true;
 	return Pos;
 }
 
 int Monster::get_targetID()
 {
 	for (int i = 0; i < MAX_USER_PER_ROOM; ++i) {
-		if (clients[room_num][i]._state.load() != ST_INGAME ||
-			clients[room_num][i].GetPosition().y - Pos.y >= 2.f) {
-			distances[i] = view_range;
+		if (clients[room_num][i]._state.load() != ST_INGAME) {
+			distances[i].distance = view_range;
+			distances[i]._id = -1;
 			continue;
 		}
 		float distance_z = clients[room_num][i].GetPosition().z - Pos.z;
 		float distance_x = clients[room_num][i].GetPosition().x - Pos.x;
-		distances[i] = sqrtf(distance_z * distance_z + distance_x * distance_x);
+		distances[i].distance = sqrtf(distance_z * distance_z + distance_x * distance_x);
+		distances[i]._id = clients[room_num][i]._id;
 	}
 
-	float min = *min_element(distances.begin(), distances.end());
-
-	if (min < view_range)
+	auto min = (*min_element(distances.begin(), distances.end(), 
+		[](const Player_Distance& a, const Player_Distance& b) {
+		return a.distance < b.distance;
+		}));
+	
+	if (min.distance < view_range)
 	{
-		return static_cast<int>(min_element(distances.begin(), distances.end()) - distances.begin());
+		return min._id;
 	}
 	else return -1;
 }
 
 void Monster::Update(float fTimeElapsed)
+{
+	switch (GetState())
+	{
+	case NPC_State::Idle: {
+		target_id = get_targetID();
+		if (target_id != -1) {
+			const auto& targetPlayer = &clients[room_num][target_id];
+			XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+			g_distance = Vector3::XZLength(distanceVector);
+			if (attack_range >= g_distance)
+			{
+				SetState(NPC_State::Attack);
+			}
+			else {
+				SetState(NPC_State::Chase);
+			}
+		}
+	}
+						break;
+	case NPC_State::Chase: {
+		if (wander) {
+			while (true) {
+				short rand_dir = rand() % 8;
+				XMFLOAT3 dir = XMFLOAT3(nx[rand_dir], 0, nz[rand_dir]);
+				XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(dir, speed * fTimeElapsed, false));
+
+				if (m_id < 20) {
+					if (ObstacleGrid[0].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+						continue;
+				}
+				else {
+					if (ObstacleGrid[1].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+						continue;
+				}
+
+
+				for (const auto& monster : monsters[room_num]) {
+					if (monster->alive.load() == false || monster->m_id == m_id) continue;
+					if (monster->BB.Intersects(BoundingBox(newPos, BB.Extents))) {
+						continue;
+					}
+				}
+
+
+				Pos = newPos;
+				BB.Center = Pos;
+				break;
+			}
+			wander_timer += fTimeElapsed;
+			if (wander_timer > 2.f) {
+				wander_timer = 0.f;
+				wander = false;
+				SetState(NPC_State::Idle);
+			}
+		}
+		else {
+			const auto& targetPlayer = &clients[room_num][target_id];
+			XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+			g_distance = Vector3::XZLength(distanceVector);
+
+			if (clients[room_num][target_id]._state.load() != ST_INGAME)
+			{
+				SetState(NPC_State::Idle);
+				target_id = -1;
+				break;
+			}
+			if (attack_range >= g_distance)
+			{
+				SetState(NPC_State::Attack);
+				break;
+			}
+			const int collide_range = static_cast<int>(Pos.z / AREA_SIZE);
+			XMFLOAT3 vel = Vector3::XZNormalize(distanceVector);
+			XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(vel, speed * fTimeElapsed, false));
+			bool collide = false;
+
+			if (m_id < 20) {
+				if (ObstacleGrid[0].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+					collide = true;
+			}
+			else {
+				if (ObstacleGrid[1].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+					collide = true;
+			}
+
+			if (collide == false) {
+				for (const auto& monster : monsters[room_num]) {
+					if (monster->alive.load() == false || monster->m_id == m_id) continue;
+					if (monster->BB.Intersects(BoundingBox(newPos, BB.Extents))) {
+						collide = true;
+						break;
+					}
+				}
+			}
+
+			if (collide == true) {
+				Pos = Find_Direction(fTimeElapsed, Pos, targetPlayer->GetPosition());
+				BB.Center = Pos;
+			}
+			else {
+				Pos = newPos;
+				BB.Center = Pos;
+			}
+		}
+	}
+						 break;
+	case NPC_State::Attack: {
+		const auto& targetPlayer = &clients[room_num][target_id];
+		XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+		g_distance = Vector3::Length(distanceVector);
+
+		attack_timer -= fTimeElapsed;
+		if (targetPlayer->_state != ST_INGAME) {
+			SetState(NPC_State::Idle);
+			target_id = -1;
+			SetAttackTimer(attack_cycle);
+			break;
+		}
+		if (attacked == false && GetAttackTimer() <= attack_cycle / 2.f) {
+			if (attack_range > g_distance) {
+				lock_guard <mutex> ll{ targetPlayer->_s_lock };
+				targetPlayer->HP -= GetPower();
+				if (targetPlayer->HP <= 0) {
+
+					//player.direction.store(DIR_DIE);
+					targetPlayer->_state.store(ST_DEAD);
+					for (auto& cl : clients[room_num]) {
+						if (cl._state.load() == ST_INGAME || cl._state.load() == ST_DEAD)
+							cl.send_update_packet(targetPlayer);
+					}
+				}
+			}
+			attacked = true;
+			break;
+		}
+		if (GetAttackTimer() <= 0) {
+			if (attack_range <= g_distance)
+			{
+				SetState(NPC_State::Chase);
+				SetAttackTimer(attack_cycle);
+			}
+			SetAttackTimer(attack_cycle);
+			attacked = false;
+		}
+	}
+						  break;
+	case NPC_State::Dead: {
+		dead_timer -= fTimeElapsed;
+		if (dead_timer <= 0) {		
+			alive.store(false);
+		}
+	}
+						break;
+	default:
+		break;
+	}
+}
+
+void SorcererMonster::Update(float fTimeElapsed)
 {
 	if (Vector3::Length(MagicLook) > 0.f) {
 		MagicPos = Vector3::Add(MagicPos, Vector3::ScalarProduct(MagicLook, 100.f * fTimeElapsed, false)); // HAT_SPEED = 200.f
@@ -366,13 +556,13 @@ void Monster::Update(float fTimeElapsed)
 					player._state.store(ST_DEAD);
 					for (auto& cl : clients[room_num]) {
 						if (cl._state.load() == ST_INGAME || cl._state.load() == ST_DEAD)
-							cl.send_move_packet(&player);
+							cl.send_update_packet(&player);
 					}
 				}
 			}
 		}
 		try {
-			for (auto& obj : Objects.at(static_cast<int>(MagicPos.z) / AREA_SIZE)) {
+			for (auto& obj : Obstacles.at(static_cast<int>(MagicPos.z) / AREA_SIZE)) {
 				if (obj->m_xmOOBB.Contains(XMLoadFloat3(&MagicPos))) {
 					MagicPos.x = 5000;
 					MagicLook.x = MagicLook.y = MagicLook.z = 0.f;
@@ -381,7 +571,7 @@ void Monster::Update(float fTimeElapsed)
 			}
 		}
 		catch (const exception& e) {
-			cout << "Hat Update catched error -" << e.what() << endl;
+			//cout << "Hat Update catched error -" << e.what() << endl;
 			MagicPos = Pos;
 			return;
 		}
@@ -391,53 +581,106 @@ void Monster::Update(float fTimeElapsed)
 	case NPC_State::Idle: {
 		target_id = get_targetID();
 		if (target_id != -1) {
-			SetState(NPC_State::Chase);
-			cur_animation_track = 1;
-			Update(fTimeElapsed);
-			return;
-		}
-	}
-		break;
-	case NPC_State::Chase: {
-		const auto& targetPlayer = &clients[room_num][target_id];
-		XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
-		g_distance = Vector3::Length(distanceVector);
-
-		if (clients[room_num][target_id].GetPosition().y - Pos.y >= 2.f || clients[room_num][target_id]._state.load() != ST_INGAME || g_distance > view_range)
-		{
-			SetState(NPC_State::Idle);
-			cur_animation_track = 0;
-			target_id = -1;
-			return;
-		}
-		if (attack_range >= g_distance)
-		{
-			SetState(NPC_State::Attack);
-			cur_animation_track = (type != 4) ? 2 : cur_animation_track;
-			return;
-		}
-		const int collide_range = static_cast<int>(Pos.z / AREA_SIZE);
-		XMFLOAT3 vel = Vector3::Normalize(Vector3::Subtract(targetPlayer->GetPosition(), Pos));
-		vel.y = 0.f;
-		const XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(vel, speed * fTimeElapsed, false));
-
-		bool collide = false;
-		for (const auto& obj : Objects[collide_range]) {
-			if (obj->m_xmOOBB.Intersects(BoundingBox(newPos, BB.Extents))) {
-				collide = true;
-				break;
+			const auto& targetPlayer = &clients[room_num][target_id];
+			XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+			g_distance = Vector3::XZLength(distanceVector);
+			if (attack_range >= g_distance)
+			{
+				SetState(NPC_State::Attack);
+			}
+			else {
+				SetState(NPC_State::Chase);
 			}
 		}
-		if (collide) {
-			Pos = Find_Direction(fTimeElapsed, Pos, targetPlayer->GetPosition());
-			BB.Center = Pos;
+	}
+						break;
+	case NPC_State::Chase: {
+		if (wander) {
+			while (true) {
+				short rand_dir = rand() % 8;
+				XMFLOAT3 dir = XMFLOAT3(nx[rand_dir], 0, nz[rand_dir]);
+				XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(dir, speed * fTimeElapsed, false));
+
+				if (m_id < 20) {
+					if (ObstacleGrid[0].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+						continue;
+				}
+				else {
+					if (ObstacleGrid[1].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+						continue;
+				}
+
+
+				for (const auto& monster : monsters[room_num]) {
+					if (monster->alive.load() == false || monster->m_id == m_id) continue;
+					if (monster->BB.Intersects(BoundingBox(newPos, BB.Extents))) {
+						continue;
+					}
+				}
+
+
+				Pos = newPos;
+				BB.Center = Pos;
+				break;
+			}
+			wander_timer += fTimeElapsed;
+			if (wander_timer > 2.f) {
+				wander_timer = 0.f;
+				wander = false;
+				SetState(NPC_State::Idle);
+			}
 		}
 		else {
-			Pos = newPos;
-			BB.Center = Pos;
+			const auto& targetPlayer = &clients[room_num][target_id];
+			XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+			g_distance = Vector3::XZLength(distanceVector);
+
+			if (clients[room_num][target_id]._state.load() != ST_INGAME)
+			{
+				SetState(NPC_State::Idle);
+				target_id = -1;
+				break;
+			}
+			if (attack_range >= g_distance)
+			{
+				SetState(NPC_State::Attack);
+				break;
+			}
+			const int collide_range = static_cast<int>(Pos.z / AREA_SIZE);
+			XMFLOAT3 vel = Vector3::XZNormalize(distanceVector);
+			XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(vel, speed * fTimeElapsed, false));
+			bool collide = false;
+
+			if (m_id < 20) {
+				if (ObstacleGrid[0].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+					collide = true;
+			}
+			else {
+				if (ObstacleGrid[1].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+					collide = true;
+			}
+
+			if (collide == false) {
+				for (const auto& monster : monsters[room_num]) {
+					if (monster->alive.load() == false || monster->m_id == m_id) continue;
+					if (monster->BB.Intersects(BoundingBox(newPos, BB.Extents))) {
+						collide = true;
+						break;
+					}
+				}
+			}
+
+			if (collide == true) {
+				Pos = Find_Direction(fTimeElapsed, Pos, targetPlayer->GetPosition());
+				BB.Center = Pos;
+			}
+			else {
+				Pos = newPos;
+				BB.Center = Pos;
+			}
 		}
 	}
-		break;
+						 break;
 	case NPC_State::Attack: {
 		const auto& targetPlayer = &clients[room_num][target_id];
 		XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
@@ -446,177 +689,582 @@ void Monster::Update(float fTimeElapsed)
 		attack_timer -= fTimeElapsed;
 		if (targetPlayer->_state != ST_INGAME) {
 			SetState(NPC_State::Idle);
-			cur_animation_track = 0;
 			target_id = -1;
 			SetAttackTimer(attack_cycle);
-
 			break;
 		}
 		if (attacked == false && GetAttackTimer() <= attack_cycle / 2.f) {
-			if (2 == type) {
-				MagicPos = Vector3::Add(GetPosition(), XMFLOAT3(0, 10, 0));
-				MagicLook = Vector3::Normalize(distanceVector);
-			}
-			else if (attack_range > g_distance) {
-				lock_guard <mutex> ll{ targetPlayer->_s_lock };
-				targetPlayer->HP -= GetPower();
-				//cout << "plHP : " << targetPlayer->HP << endl;
-				if (targetPlayer->HP <= 0) {
-
-					//player.direction.store(DIR_DIE);
-					targetPlayer->_state.store(ST_DEAD);
-					for (auto& cl : clients[room_num]) {
-						if (cl._state.load() == ST_INGAME || cl._state.load() == ST_DEAD) 
-							cl.send_move_packet(targetPlayer);
-					}
-				}
-			}
+			MagicPos = Vector3::Add(GetPosition(), XMFLOAT3(0, 10, 0));
+			MagicLook = Vector3::Normalize(distanceVector);
 			attacked = true;
 			break;
 		}
-		if (GetAttackTimer() <= 0) {//0326
+		if (GetAttackTimer() <= 0) {
 			if (attack_range <= g_distance)
 			{
 				SetState(NPC_State::Chase);
-				cur_animation_track = 1;
 				SetAttackTimer(attack_cycle);
 			}
 			SetAttackTimer(attack_cycle);
 			attacked = false;
 		}
 	}
-		break;
+						  break;
 	case NPC_State::Dead: {
-		if (type != 4)
-			cur_animation_track = 3;
 		dead_timer -= fTimeElapsed;
-		if (dead_timer <= 0) {			
-			alive = false;
+		if (dead_timer <= 0) {
+			alive.store(false);
 		}
 	}
-		break;
+						break;
 	default:
 		break;
 	}
 }
 
-void SorcererMonster::Update(float fTimeElapsed)
+void BossMonster::Update(float fTimeElapsed)
 {
+	switch (GetState())
+	{
+	case NPC_State::Idle: {
+		target_id = get_targetID();
+		if (target_id != -1) {
+			const auto& targetPlayer = &clients[room_num][target_id];
+			XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+			g_distance = Vector3::XZLength(distanceVector);
+			if (attack_range >= g_distance)
+			{
+				SetState(NPC_State::Attack);
+			}
+			else {
+				SetState(NPC_State::Chase);
+			}
+		}
+	}
+						break;
+	case NPC_State::Chase: {
+		if (wander) {
+			while (true) {
+				short rand_dir = rand() % 8;
+				XMFLOAT3 dir = XMFLOAT3(nx[rand_dir], 0, nz[rand_dir]);
+				XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(dir, speed * fTimeElapsed, false));
 
+				if (ObstacleGrid[1].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+					continue;
+				
+
+
+				for (const auto& monster : monsters[room_num]) {
+					if (monster->alive.load() == false || monster->m_id == m_id) continue;
+					if (monster->BB.Intersects(BoundingBox(newPos, BB.Extents))) {
+						continue;
+					}
+				}
+
+
+				Pos = newPos;
+				BB.Center = Pos;
+				break;
+			}
+			wander_timer += fTimeElapsed;
+			if (wander_timer > 2.f) {
+				wander_timer = 0.f;
+				wander = false;
+				SetState(NPC_State::Idle);
+			}
+		}
+		else {
+			const auto& targetPlayer = &clients[room_num][target_id];
+			XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+			g_distance = Vector3::XZLength(distanceVector);
+
+			if (clients[room_num][target_id]._state.load() != ST_INGAME)
+			{
+				SetState(NPC_State::Idle);
+				target_id = -1;
+				break;
+			}
+			if (attack_range >= g_distance)
+			{
+				SetState(NPC_State::Attack);
+				break;
+			}
+			const int collide_range = static_cast<int>(Pos.z / AREA_SIZE);
+			XMFLOAT3 vel = Vector3::XZNormalize(distanceVector);
+			XMFLOAT3 newPos = Vector3::Add(Pos, Vector3::ScalarProduct(vel, speed * fTimeElapsed, false));
+
+			bool collide = false;
+
+			if (ObstacleGrid[1].at(int(newPos.x) / CELL_SIZE).at(int(newPos.z) / CELL_SIZE) == false)
+				collide = true;
+
+			if (collide == false) {
+				for (const auto& monster : monsters[room_num]) {
+					if (monster->alive.load() == false || monster->m_id == m_id) continue;
+					if (monster->BB.Intersects(BoundingBox(newPos, BB.Extents))) {
+						collide = true;
+						break;
+					}
+				}
+			}
+
+			if (collide == true) {
+				Pos = Find_Direction(fTimeElapsed, Pos, targetPlayer->GetPosition());
+				BB.Center = Pos;
+			}
+			else {
+				Pos = newPos;
+				BB.Center = Pos;
+			}
+		}
+	}
+						 break;
+	case NPC_State::Attack: {
+		const auto& targetPlayer = &clients[room_num][target_id];
+		XMFLOAT3 distanceVector = Vector3::Subtract(targetPlayer->GetPosition(), Pos);
+		g_distance = Vector3::Length(distanceVector);
+
+		attack_timer -= fTimeElapsed;
+		if (targetPlayer->_state != ST_INGAME) {
+			SetState(NPC_State::Idle);
+			target_id = -1;
+			SetAttackTimer(attack_cycle);
+			break;
+		}
+		if (attacked == false && GetAttackTimer() <= attack_cycle / 2.f) {
+			for (auto& client : clients[room_num]) {
+				if (client._state.load() != ST_INGAME) continue;
+				XMFLOAT3 attack_distanceVector = Vector3::Subtract(client.GetPosition(), Pos);
+				float g_attack_distance = Vector3::Length(attack_distanceVector);
+				if (attack_range > g_attack_distance) {
+					lock_guard <mutex> ll{ client._s_lock };
+					client.HP -= GetPower();
+					if (client.HP <= 0) {
+						client._state.store(ST_DEAD);
+						for (auto& cl : clients[room_num]) {
+							if (cl._state.load() == ST_INGAME || cl._state.load() == ST_DEAD)
+								cl.send_update_packet(targetPlayer);
+						}
+					}
+				}
+			}
+			attacked = true;
+			break;
+		}
+		if (GetAttackTimer() <= 0) {
+			if (attack_range <= g_distance)
+			{
+				SetState(NPC_State::Chase);
+				SetAttackTimer(attack_cycle);
+			}
+			SetAttackTimer(attack_cycle);
+			attacked = false;
+		}
+	}
+						  break;
+	case NPC_State::Dead: {
+		dead_timer -= fTimeElapsed;
+		if (dead_timer <= 0) {
+			alive.store(false);
+		}
+	}
+						break;
+	default:
+		break;
+	}
 }
 
-void InitializeStages()
+void InitializeMonsters()
+{
+	for (int i = 0; i < MAX_ROOM; ++i)
+	{
+		for (int j = 0; j < monsters[i].size(); ++j)
+		{
+			if (StagesInfo[j].type == 2)
+				monsters[i][j] = new SorcererMonster();
+			else if (StagesInfo[j].type == 3)
+				monsters[i][j] = new BossMonster();
+			else
+				monsters[i][j] = new Monster();			
+			monsters[i][j]->Initialize(i, StagesInfo[j].id, StagesInfo[j].type, StagesInfo[j].Pos);
+		}
+	}
+}
+
+void FinalizeMonsters()
+{
+	for (int i = 0; i < monsters.size(); ++i)
+	{
+		for (int j = 0; j < monsters[i].size(); ++i)
+			delete monsters[i][j];
+	}
+}
+
+
+void InitializeGrid()
+{
+	//BoundingBox CheckBox = BoundingBox(XMFLOAT3(0, 0, 0), MONSTER_SIZE);
+
+	//// 2ì¸µ
+	//for (int x = 0; x < GRID_SIZE_X * CELL_SIZE; ++x) {
+	//	for (int z = 0; z < GRID_SIZE_Z * CELL_SIZE; ++z) {
+	//		CheckBox.Center = XMFLOAT3(x, -63, z);
+
+	//		bool collide = false;
+
+	//		for (int i = 0; i < 24; i++) {
+	//			for (auto& obj : Obstacles[i]) {
+	//				if (obj->m_xmOOBB.Intersects(CheckBox)) {
+	//					ObstacleGrid[0][x / CELL_SIZE][z / CELL_SIZE] = false;
+	//					z = z + CELL_SIZE - (z % CELL_SIZE);
+	//					collide = true;
+	//					break;
+	//				}
+	//				else ObstacleGrid[0][x / CELL_SIZE][z / CELL_SIZE] = true;
+	//			}
+	//			if (collide) break;
+	//		}
+	//	}
+	//}
+
+	//// 1ì¸µ
+	//for (int x = 0; x < GRID_SIZE_X * CELL_SIZE; ++x) {
+	//	for (int z = 0; z < GRID_SIZE_Z * CELL_SIZE; ++z) {
+	//		CheckBox.Center = XMFLOAT3(x, -304, z);
+
+	//		bool collide = false;
+
+	//		for (int i = 0; i < 24; i++) {
+	//			for (auto& obj : Obstacles[i]) {
+	//				if (obj->m_xmOOBB.Intersects(CheckBox)) {
+	//					ObstacleGrid[1][x / CELL_SIZE][z / CELL_SIZE] = false;
+	//					z = z + CELL_SIZE - (z % CELL_SIZE);
+	//					collide = true;
+	//					break;
+	//				}
+	//				else ObstacleGrid[1][x / CELL_SIZE][z / CELL_SIZE] = true;
+	//			}
+	//			if (collide) break;
+	//		}
+	//	}
+	//}
+
+	//ofstream file("map.txt");
+
+	//if (file.is_open())
+	//{
+	//	for (int floor = 0; floor < 2; ++floor)
+	//	{
+	//		for (int x = 0; x < GRID_SIZE_X; ++x)
+	//		{
+	//			for (int z = 0; z < GRID_SIZE_Z; ++z)
+	//			{
+	//				file << ObstacleGrid[floor][x][z] << " ";
+	//			}
+	//			file << endl;
+	//		}
+	//	}
+	//	file.close();
+	//}
+	 
+	 
+	//wcout << "2 FLOOR\n";
+	//for (int z = GRID_SIZE_Z - 1; z >= 65; --z) {
+	//	for (int x = 0; x < GRID_SIZE_X; ++x) {
+	//		wcout << ObstacleGrid[0][x][z];
+	//	}
+	//	wcout << endl;
+	//}
+	//
+	//wcout << endl << endl << endl;
+
+	//wcout << "1 FLOOR\n";
+	//for (int z = GRID_SIZE_Z - 1; z >= 65; --z) {
+	//	for (int x = 0; x < GRID_SIZE_X; ++x) {
+	//		wcout << ObstacleGrid[1][x][z];
+	//	}
+	//	wcout << endl;
+	//}
+
+	std::ifstream file("map.txt");
+
+	if (file.is_open())
+	{
+		for (int floor = 0; floor < 2; ++floor)
+		{
+			for (int x = 0; x < GRID_SIZE_X; ++x)
+			{
+				for (int z = 0; z < GRID_SIZE_Z; ++z)
+				{
+					file >> ObstacleGrid[floor][x][z];
+				}
+			}
+		}
+		file.close();
+	}
+	else
+	{
+		std::cout << "Failed to open file for reading." << endl;
+	}
+}
+
+void InitializeMap()
+{
+	int* m_nObjects = new int(0);
+	MapObject** m_ppObjects = LoadGameObjectsFromFile("Models/Scene.bin", m_nObjects);
+
+	for (int i = 0; i < *m_nObjects; i++) {
+		if (0 == strcmp(m_ppObjects[i]->m_pstrName, "Dense_Floor_mesh") ||
+			0 == strcmp(m_ppObjects[i]->m_pstrName, "Ceiling_concrete_base_mesh") ||
+			0 == strcmp(m_ppObjects[i]->m_pstrName, "Bedroom_wall_b_06_mesh")) continue;
+
+		if (0 == strcmp(m_ppObjects[i]->m_pstrName, "Key_mesh"))
+		{
+			Key_Items[0].emplace_back(m_ppObjects[i]->m_xmOOBB, 1, i);
+			continue;
+		}
+		if (0 == strcmp(m_ppObjects[i]->m_pstrName, "2ndRoomCoin")) {
+			Key_Items[1].emplace_back(m_ppObjects[i]->m_xmOOBB, 0.17f, i);
+			continue;
+		}
+
+
+		int collide_range_min = ((int)m_ppObjects[i]->m_xmOOBB.Center.z - (int)m_ppObjects[i]->m_xmOOBB.Extents.z) / AREA_SIZE;
+		int collide_range_max = ((int)m_ppObjects[i]->m_xmOOBB.Center.z + (int)m_ppObjects[i]->m_xmOOBB.Extents.z) / AREA_SIZE;
+
+		for (int j = collide_range_min; j <= collide_range_max; j++) {
+			Obstacles[j].emplace_back(m_ppObjects[i]);
+		}
+	}
+
+	delete m_nObjects;
+	delete[] m_ppObjects;
+}
+
+void InitializeMonsterInfo()
 {
 	int ID_constructor = 0;
 	random_device rd;
 	mt19937 gen(rd());
-	uniform_int_distribution<int> x_dis(150, 500);
+	uniform_int_distribution<int> x_dis(130, 550);
 	uniform_int_distribution<int> z_dis(1300, 2500);
-	uniform_int_distribution<int> type_dis(0, 2);
-	{	// 1stage
-		//cout << "1 stage\n";
+	//uniform_int_distribution<int> type_dis(0, 2);
+	int t = -1;
 
+	{   // 1stage
+	   //while (ID_constructor < 1) {//pat
 		while (ID_constructor < 10) {
 			float _x = static_cast<float>(x_dis(gen));
 			float _z = static_cast<float>(z_dis(gen));
-			BoundingBox test = BoundingBox(XMFLOAT3(_x, -63, _z), XMFLOAT3(15, 20, 12));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -63, _z), MONSTER_SIZE);
 			bool col = false;
-			for (auto& obj : Objects[static_cast<int>(_z) / AREA_SIZE])
+			for (auto& obj : Obstacles[static_cast<int>(_z) / AREA_SIZE])
 				if (obj->m_xmOOBB.Intersects(test)) {
 					col = true;
 					break;
 				}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
 			if (col) continue;
-			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -63, _z), type_dis(gen), ID_constructor);
-			StagesInfo[0].push_back(MI);
+
+			if (4 > ID_constructor % 10)
+				t = 0;
+			else if (7 > ID_constructor % 10)
+				t = 1;
+			else if (10 > ID_constructor % 10)
+				t = 2;
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -63, _z), t, ID_constructor);//pat
+			//MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -63, _z), type_dis(gen), ID_constructor);
+			StagesInfo.push_back(MI);
 			//cout << ID_constructor << " - " << MI.type << endl;
 			//Vector3::Print(MI.Pos);
 			ID_constructor++;
 		}
 	}
-	{	// 2stage
-		//cout << "2 stage\n";
+	{   // 2stage
 		gen.seed(rd());
 		z_dis.param(uniform_int_distribution<int>::param_type(2600, 3500));
+		//while (ID_constructor < 11) {
 		while (ID_constructor < 20) {
 			float _x = static_cast<float>(x_dis(gen));
 			float _z = static_cast<float>(z_dis(gen));
-			BoundingBox test = BoundingBox(XMFLOAT3(_x, -63, _z), XMFLOAT3(15, 20, 12));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -63, _z), MONSTER_SIZE);
 			bool col = false;
-			for (auto& obj : Objects[static_cast<int>(_z) / AREA_SIZE])
+
+			for (auto& obj : Obstacles[static_cast<int>(_z) / AREA_SIZE]) {
 				if (obj->m_xmOOBB.Intersects(test)) {
 					col = true;
 					break;
 				}
+			}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
+
 			if (col) continue;
-			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -63, _z), type_dis(gen), ID_constructor);
-			StagesInfo[1].push_back(MI);
+
+			if (4 > ID_constructor % 10)
+				t = 0;
+			else if (7 > ID_constructor % 10)
+				t = 1;
+			else if (10 > ID_constructor % 10)
+				t = 2;
+			//MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -63, _z), type_dis(gen), ID_constructor);
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -63, _z), t, ID_constructor);
+			StagesInfo.push_back(MI);
 			//cout << ID_constructor << " - " << MI.type << endl;
 			//Vector3::Print(MI.Pos);
 			ID_constructor++;
 		}
 	}
-	{	// 3stage
-		//cout << "3 stage\n";
+	{   // 3stage
 		gen.seed(rd());
+		x_dis.param(uniform_int_distribution<int>::param_type(130, 320));
 		z_dis.param(uniform_int_distribution<int>::param_type(3700, 4400));
+		//while (ID_constructor < 21) {
 		while (ID_constructor < 30) {
 			float _x = static_cast<float>(x_dis(gen));
 			float _z = static_cast<float>(z_dis(gen));
-			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), XMFLOAT3(15, 20, 12));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), MONSTER_SIZE);
 			bool col = false;
-			for (auto& obj : Objects[static_cast<int>(_z) / AREA_SIZE])
+			for (auto& obj : Obstacles[static_cast<int>(_z) / AREA_SIZE])
 				if (obj->m_xmOOBB.Intersects(test)) {
 					col = true;
 					break;
 				}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
 			if (col) continue;
-			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
-			StagesInfo[2].push_back(MI);
+
+			if (4 > ID_constructor % 10)
+				t = 0;
+			else if (7 > ID_constructor % 10)
+				t = 1;
+			else if (10 > ID_constructor % 10)
+				t = 2;
+			//MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), t, ID_constructor);
+			StagesInfo.push_back(MI);
 			//cout << ID_constructor << " - " << MI.type << endl;
 			//Vector3::Print(MI.Pos);
 			ID_constructor++;
 		}
 	}
-	{	// 4stage
-		//cout << "4 stage\n";
+	{   // 4stage
 		gen.seed(rd());
+		x_dis.param(uniform_int_distribution<int>::param_type(130, 550));
 		z_dis.param(uniform_int_distribution<int>::param_type(2600, 3500));
+		//while (ID_constructor < 31) {
 		while (ID_constructor < 40) {
 			float _x = static_cast<float>(x_dis(gen));
 			float _z = static_cast<float>(z_dis(gen));
-			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), XMFLOAT3(15, 20, 12));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), MONSTER_SIZE);
 			bool col = false;
-			for (auto& obj : Objects[static_cast<int>(_z) / AREA_SIZE])
+			for (auto& obj : Obstacles[static_cast<int>(_z) / AREA_SIZE])
 				if (obj->m_xmOOBB.Intersects(test)) {
 					col = true;
 					break;
 				}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
 			if (col) continue;
-			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
-			StagesInfo[3].push_back(MI);
+
+			if (4 > ID_constructor % 10)
+				t = 0;
+			else if (7 > ID_constructor % 10)
+				t = 1;
+			else if (10 > ID_constructor % 10)
+				t = 2;
+			//MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), t, ID_constructor);
+			StagesInfo.push_back(MI);
 			//cout << ID_constructor << " - " << MI.type << endl;
 			//Vector3::Print(MI.Pos);
 			ID_constructor++;
 		}
 	}
-	{	// 5stage
-		//cout << "5 stage\n";
+	{   // 5stage
 		gen.seed(rd());
 		z_dis.param(uniform_int_distribution<int>::param_type(1300, 2450));
+		//while (ID_constructor < 41) {
 		while (ID_constructor < 50) {
 			float _x = static_cast<float>(x_dis(gen));
 			float _z = static_cast<float>(z_dis(gen));
-			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), XMFLOAT3(15, 20, 12));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), MONSTER_SIZE);
 			bool col = false;
-			for (auto& obj : Objects[static_cast<int>(_z) / AREA_SIZE])
+			for (auto& obj : Obstacles[static_cast<int>(_z) / AREA_SIZE])
 				if (obj->m_xmOOBB.Intersects(test)) {
 					col = true;
 					break;
 				}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
 			if (col) continue;
-			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
-			StagesInfo[4].push_back(MI);
+
+			if (4 > ID_constructor % 10)
+				t = 0;
+			else if (7 > ID_constructor % 10)
+				t = 1;
+			else if (10 > ID_constructor % 10)
+				t = 2;
+			//MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), t, ID_constructor);
+			StagesInfo.push_back(MI);
+			//cout << ID_constructor << " - " << MI.type << endl;
+			//Vector3::Print(MI.Pos);
+			ID_constructor++;
+		}
+	}
+
+	{   // 6stage
+		gen.seed(rd());
+		z_dis.param(uniform_int_distribution<int>::param_type(300, 1100));
+		while (ID_constructor < 59) {
+			float _x = static_cast<float>(x_dis(gen));
+			float _z = static_cast<float>(z_dis(gen));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), MONSTER_SIZE);
+			bool col = false;
+			for (auto& obj : Obstacles[static_cast<int>(_z) / AREA_SIZE])
+				if (obj->m_xmOOBB.Intersects(test)) {
+					col = true;
+					break;
+				}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
+			if (col) continue;
+
+			if (4 > ID_constructor % 10)
+				t = 0;
+			else if (7 > ID_constructor % 10)
+				t = 1;
+			else if (10 > ID_constructor % 10)
+				t = 2;
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), t, ID_constructor);
+			//MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
+			StagesInfo.push_back(MI);
 			//cout << ID_constructor << " - " << MI.type << endl;
 			//Vector3::Print(MI.Pos);
 			ID_constructor++;
@@ -624,26 +1272,28 @@ void InitializeStages()
 	}
 
 	{	// 6stage
-		//cout << "6 stage\n";
 		gen.seed(rd());
-		z_dis.param(uniform_int_distribution<int>::param_type(300, 1100));
 		while (ID_constructor < 60) {
 			float _x = static_cast<float>(x_dis(gen));
-			float _z = static_cast<float>(z_dis(gen));
-			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, _z), XMFLOAT3(15, 20, 12));
+			BoundingBox test = BoundingBox(XMFLOAT3(_x, -304, 300), BOSS_MONSTER_SIZE);
 			bool col = false;
-			for (auto& obj : Objects[static_cast<int>(_z) / AREA_SIZE])
+			for (auto& obj : Obstacles[static_cast<int>(300) / AREA_SIZE])
 				if (obj->m_xmOOBB.Intersects(test)) {
 					col = true;
 					break;
 				}
+			for (int i = ID_constructor - 1; i >= ID_constructor - ID_constructor % 10; i--) {
+				if (BoundingBox(StagesInfo[i].Pos, MONSTER_SIZE).Intersects(test)) {
+					col = true;
+					break;
+				}
+			}
 			if (col) continue;
-			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, _z), type_dis(gen), ID_constructor);
-			StagesInfo[5].push_back(MI);
+			MonsterInfo MI = MonsterInfo(XMFLOAT3(_x, -304, 300), 3, ID_constructor);
+			StagesInfo.push_back(MI);
 			//cout << ID_constructor << " - " << MI.type << endl;
 			//Vector3::Print(MI.Pos);
 			ID_constructor++;
 		}
 	}
 }
-

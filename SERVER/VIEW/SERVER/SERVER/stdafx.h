@@ -15,7 +15,7 @@
 #include <memory.h>
 #include <tchar.h>
 #include <math.h>
-
+#include <fstream>
 #include <string>
 #include <wrl.h>
 #include <shellapi.h>
@@ -66,55 +66,15 @@ constexpr short MAP_X_SIZE = 700;
 constexpr short MAP_Y_SIZE = 480;
 constexpr short MAP_Z_SIZE = 4600;
 constexpr short STAGE_NUMBERS = 6;
+constexpr short MONSTER_PER_STAGE = 10;
 
 #define BULLET_SIZE XMFLOAT3{10,10,10}
-#define FRAME_BUFFER_WIDTH		640
-#define FRAME_BUFFER_HEIGHT		480
 
-//23.01.03
-//#define MAX_LIGHTS				8 
-#define MAX_LIGHTS				    20//lamp2
-//
-#define MAX_SCENE_MATERIALS		16 
-
-#define POINT_LIGHT				1
-#define SPOT_LIGHT				2
-#define DIRECTIONAL_LIGHT		3
-
-#define MAX_Scene_MATERIALS		16 
-
-#define DIR_FORWARD				0x01
-#define DIR_BACKWARD			0x02
-#define DIR_LEFT				0x04
-#define DIR_RIGHT				0x08
-#define DIR_RUN					0x10
-#define DIR_JUMP				0x20
-#define DIR_ATTACK				0x40
-#define DIR_COLLECT				0x80
-#define DIR_CHANGESTATE			0x100
-#define DIR_DIE					0x200
-
-
-
-#define ANIMATION_TYPE_ONCE				0
-#define ANIMATION_TYPE_LOOP				1
-#define ANIMATION_TYPE_PINGPONG			2
-
-#define ANIMATION_CALLBACK_EPSILON		0.00165f
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
-
-// TODO: 프로그램에 필요한 추가 헤더는 여기에서 참조합니다.
-
-//extern UINT gnCbvSrvDescriptorIncrementSize;
-
-//23.01.25
-enum SCENEID { SCENE_ZERO, SCENE_OPEN, SCENE_LOGIN, SCENE_STAGE, SCENE_END };
-
-#define RANDOM_COLOR			XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))
 
 #define EPSILON					1.0e-10f
 
@@ -187,9 +147,26 @@ namespace Vector3
 		return(m_xmf3Normal);
 	}
 
+	inline XMFLOAT3 XZNormalize(XMFLOAT3& xmf3Vector)
+	{
+		XMFLOAT3 m_xmf3Normal;
+		xmf3Vector.y = 0;
+		XMStoreFloat3(&m_xmf3Normal, XMVector3Normalize(XMLoadFloat3(&xmf3Vector)));
+		return(m_xmf3Normal);
+	}
+
 	inline float Length(XMFLOAT3& xmf3Vector)
 	{
 		XMFLOAT3 xmf3Result;
+		XMStoreFloat3(&xmf3Result, XMVector3Length(XMLoadFloat3(&xmf3Vector)));
+		return(xmf3Result.x);
+		//return sqrtf(xmf3Vector.x * xmf3Vector.x + xmf3Vector.z * xmf3Vector.z);
+	}
+
+	inline float XZLength(XMFLOAT3& xmf3Vector)
+	{
+		XMFLOAT3 xmf3Result;
+		xmf3Vector.y = 0;
 		XMStoreFloat3(&xmf3Result, XMVector3Length(XMLoadFloat3(&xmf3Vector)));
 		return(xmf3Result.x);
 		//return sqrtf(xmf3Vector.x * xmf3Vector.x + xmf3Vector.z * xmf3Vector.z);
@@ -313,26 +290,8 @@ namespace Matrix4x4
 		return(xmmtx4x4Result);
 	}
 }
-//
-//namespace Triangle
-//{
-//	inline bool Intersect(XMFLOAT3& xmf3RayPosition, XMFLOAT3& xmf3RayDirection, XMFLOAT3& v0, XMFLOAT3& v1, XMFLOAT3& v2, float& fHitDistance)
-//	{
-//		return(TriangleTests::Intersects(XMLoadFloat3(&xmf3RayPosition), XMLoadFloat3(&xmf3RayDirection), XMLoadFloat3(&v0), XMLoadFloat3(&v1), XMLoadFloat3(&v2), fHitDistance));
-//	}
-//}
-//
-//namespace Plane
-//{
-//	inline XMFLOAT4 Normalize(XMFLOAT4& xmf4Plane)
-//	{
-//		XMFLOAT4 xmf4Result;
-//		XMStoreFloat4(&xmf4Result, XMPlaneNormalize(XMLoadFloat4(&xmf4Plane)));
-//		return(xmf4Result);
-//	}
-//}
 
-struct XMFLOAT3Hash {
+struct PointHash {
 	size_t operator()(const XMFLOAT3& v) const {
 		size_t h1 = std::hash<float>{}(v.x);
 		size_t h2 = std::hash<float>{}(v.z);
@@ -340,46 +299,16 @@ struct XMFLOAT3Hash {
 	}
 };
 
-struct XMFLOAT3Equal {
+struct PointEqual {
 	bool operator()(const XMFLOAT3& v1, const XMFLOAT3& v2) const {
 		return Vector3::Compare(v1, v2);
 	}
 };
 
-struct MYPOINT {
-	short x = 0;
-	short z = 0;
-	MYPOINT(short _x, short _z) : x(_x), z(_z) {}
-};
-class comparePOINT {
-public:
-	bool operator()(const MYPOINT& p1, const MYPOINT& p2) const {
-		if (p1.x < p2.x) return true;
-		else if (p1.x > p2.x) return false;
-		else if (p1.z < p2.z) return true;
-		else return false;
-	}
-};
 
-struct Stage_Location_Info
-{
-	int min_z;
-	int max_z;
-};
 template<typename T>
 class threadsafe_vector : public vector<T>
 {
 public:
-	void emplace_back(const T& value) {
-		// lock_guard<mutex> _vec_lock{ v_lock };
-		//unique_lock<shared_mutex> vec_lock{ v_shared_lock };
-		vector<T>::emplace_back(value);
-	}
-	void erase(typename vector<T>::const_iterator iter) {
-		//lock_guard<mutex> vec_lock{ v_lock };
-		vector<T>::erase(iter);
-	}
-	//mutable mutex v_lock;
-	unsigned short cur_stage = 1;
 	mutable shared_mutex v_shared_lock;
 };

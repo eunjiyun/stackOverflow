@@ -72,7 +72,7 @@ void CPlayer::Move(DWORD dwDirection, float fDistance, bool bUpdateVelocity)
 			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Right, -fDistance);
 
 		if (dwDirection & DIR_JUMP && onFloor) {
-			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, fDistance * 15); 
+			xmf3Shift = Vector3::Add(xmf3Shift, m_xmf3Up, fDistance * 15);
 			onFloor = false;
 			m_pSkinnedAnimationController->SetTrackPosition(5, 1.0f);
 			//m_pSkinnedAnimationController->SetTrackEnable(m_pSkinnedAnimationController->Cur_Animation_Track, false);
@@ -123,33 +123,10 @@ void CPlayer::Rotate(float x, float y, float z)
 			if (m_fRoll > +20.0f) { z -= (m_fRoll - 20.0f); m_fRoll = +20.0f; }
 			if (m_fRoll < -20.0f) { z -= (m_fRoll + 20.0f); m_fRoll = -20.0f; }
 		}
-		m_pCamera->Rotate(x, y, z);
 		if (y != 0.0f)
 		{
 			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Up), XMConvertToRadians(y));
 			m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-			m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
-		}
-	}
-	else if (nCurrentCameraMode == SPACESHIP_CAMERA)
-	{
-		m_pCamera->Rotate(x, y, z);
-		if (x != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Right), XMConvertToRadians(x));
-			m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-			m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
-		}
-		if (y != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Up), XMConvertToRadians(y));
-			m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-			m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
-		}
-		if (z != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Look), XMConvertToRadians(z));
-			m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
 			m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
 		}
 	}
@@ -159,14 +136,40 @@ void CPlayer::Rotate(float x, float y, float z)
 	m_xmf3Up = Vector3::CrossProduct(m_xmf3Look, m_xmf3Right, true);
 }
 
+void CPlayer::processAnimation()
+{
+	m_pSkinnedAnimationController->SetTrackEnable(m_pSkinnedAnimationController->Cur_Animation_Track, false);
+	if (onFloor == false) {
+		m_pSkinnedAnimationController->SetTrackEnable(5, true);
+		return;
+	}
+	else m_pSkinnedAnimationController->SetTrackPosition(5, 1.0f);
+
+	if (HP > packet_HP) {
+		m_pSkinnedAnimationController->SetTrackPosition(3, 0.0f);
+		m_pSkinnedAnimationController->SetTrackEnable(3, true);
+
+		HP = packet_HP;
+		return;
+	}
+	HP = packet_HP;
+
+	if (Vector3::Length(m_xmf3Velocity) > 0.f) {
+		m_pSkinnedAnimationController->SetTrackEnable(1, true);
+	}
+	else
+	{
+		m_pSkinnedAnimationController->SetTrackEnable(0, true);
+		m_pSkinnedAnimationController->SetTrackPosition(1, 0.0f);
+	}
+}
+
 void CPlayer::Update(float fTimeElapsed)
 {
-	if (onAttack || onCollect || onDie) SetMaxVelocityXZ(0.0f);
-	else if (onRun) SetMaxVelocityXZ(100.0f);
-	else SetMaxVelocityXZ(10.0f);
+	//if (onAttack || onCollect || onDie) SetMaxVelocityXZ(0.0f);
+	//else SetMaxVelocityXZ(100.0f);
 
 	m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, m_xmf3Gravity);
-
 
 	float fLength = sqrtf(m_xmf3Velocity.x * m_xmf3Velocity.x + m_xmf3Velocity.z * m_xmf3Velocity.z);
 	float fMaxVelocityXZ = m_fMaxVelocityXZ;
@@ -197,11 +200,15 @@ void CPlayer::Deceleration(float fTimeElapsed)
 	float fDeceleration = (m_fFriction * fTimeElapsed);
 	if (fDeceleration > fLength) fDeceleration = fLength;
 	m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, Vector3::ScalarProduct(m_xmf3Velocity, -fDeceleration, true));
+	//XMFLOAT3 Decel = Vector3::ScalarProduct(m_xmf3Velocity, -fDeceleration, true);
+	//Decel.y = 0;
+	//m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, Decel);
 }
 
 CCamera* CPlayer::OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode)
 {
 	CCamera* pNewCamera = NULL;
+
 	switch (nNewCameraMode)
 	{
 	case FIRST_PERSON_CAMERA:
@@ -257,7 +264,6 @@ void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSigna
 {
 	DWORD nCameraMode = (pCamera) ? pCamera->GetMode() : 0x00;
 
-	shadowID = 1;
 	if (nCameraMode == THIRD_PERSON_CAMERA || true == shadow)
 		CGameObject::Render(pd3dCommandList, m_pd3dGraphicsRootSignature, m_pd3dPipelineState, pCamera);
 }
@@ -287,9 +293,8 @@ void CPlayer::boundingAnimate(float fElapsedTime)
 // 
 #define _WITH_DEBUG_CALLBACK_DATA
 
-void CSoundCallbackHandler::HandleCallback(void* pCallbackData, float fTrackPosition)//0501
+void CSoundCallbackHandler::HandleCallback(void* pCallbackData, float fTrackPosition)
 {
-
 	_TCHAR* pWavName = (_TCHAR*)pCallbackData;
 #ifdef _WITH_DEBUG_CALLBACK_DATA
 	TCHAR pstrDebug[256] = { 0 };
@@ -365,69 +370,76 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 	m_pSkinnedAnimationController->SetTrackEnable(0, true);
 
 
-	AnimationControllers[0]->SetCallbackKeys(1, 1);
-	AnimationControllers[0]->SetCallbackKeys(2, 1);
-	AnimationControllers[0]->SetCallbackKeys(3, 1);
-	AnimationControllers[0]->SetCallbackKeys(4, 1);
-
-
-	AnimationControllers[1]->SetCallbackKeys(1, 1);
-	AnimationControllers[1]->SetCallbackKeys(2, 1);
-	AnimationControllers[1]->SetCallbackKeys(3, 1);
-	AnimationControllers[1]->SetCallbackKeys(4, 1);
-
-
-	AnimationControllers[2]->SetCallbackKeys(1, 1);
-	AnimationControllers[2]->SetCallbackKeys(2, 1);
-	AnimationControllers[2]->SetCallbackKeys(3, 1);
-	AnimationControllers[2]->SetCallbackKeys(4, 1);
-
-#ifdef _WITH_SOUND_RESOURCE
-	m_pSkinnedAnimationController->SetCallbackKey(0, 0.1f, _T("Footstep01"));
-	m_pSkinnedAnimationController->SetCallbackKey(1, 0.5f, _T("Footstep02"));
-	m_pSkinnedAnimationController->SetCallbackKey(2, 0.9f, _T("Footstep03"));
-#else
-
-	AnimationControllers[0]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
-	AnimationControllers[0]->SetCallbackKey(2, 0, 0.2f, _T("Sound/swordAttack.wav"));
-	AnimationControllers[0]->SetCallbackKey(3, 0, 0.2f, _T("Sound/run.wav"));
-	AnimationControllers[0]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
-
-
-	AnimationControllers[1]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
-	AnimationControllers[1]->SetCallbackKey(2, 0, 0.2f, _T("Sound/gunAttack.wav"));
-	AnimationControllers[1]->SetCallbackKey(3, 0, 0.2f, _T("Sound/run.wav"));
-	AnimationControllers[1]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
-
-
-	AnimationControllers[2]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
-	AnimationControllers[2]->SetCallbackKey(2, 0, 0.2f, _T("Sound/attack.wav"));
-	AnimationControllers[2]->SetCallbackKey(3, 0, 0.2f, _T("Sound/run.wav"));
-	AnimationControllers[2]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
-
-#endif
-	CAnimationCallbackHandler* pAnimationCallbackHandler = new CSoundCallbackHandler();
-
-	AnimationControllers[0]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
-	AnimationControllers[0]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
-	AnimationControllers[0]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
-	AnimationControllers[0]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
-
-	AnimationControllers[1]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
-	AnimationControllers[1]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
-	AnimationControllers[1]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
-	AnimationControllers[1]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
-
-	AnimationControllers[2]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
-	AnimationControllers[2]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
-	AnimationControllers[2]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
-	AnimationControllers[2]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
+	//	AnimationControllers[0]->SetCallbackKeys(1, 1);
+	//	//AnimationControllers[0]->SetCallbackKeys(2, 1);
+	//	AnimationControllers[0]->SetCallbackKeys(3, 1);
+	//	AnimationControllers[0]->SetCallbackKeys(4, 1);
+	//	AnimationControllers[0]->SetCallbackKeys(5, 1);
+	//
+	//	AnimationControllers[1]->SetCallbackKeys(1, 1);
+	//	AnimationControllers[1]->SetCallbackKeys(2, 1);
+	//	AnimationControllers[1]->SetCallbackKeys(3, 1);
+	//	AnimationControllers[1]->SetCallbackKeys(4, 1);
+	//	AnimationControllers[1]->SetCallbackKeys(5, 1);
+	//
+	//	AnimationControllers[2]->SetCallbackKeys(1, 1);
+	//	//AnimationControllers[2]->SetCallbackKeys(2, 1);
+	//	AnimationControllers[2]->SetCallbackKeys(3, 1);
+	//	AnimationControllers[2]->SetCallbackKeys(4, 1);
+	//	AnimationControllers[2]->SetCallbackKeys(5, 1);
+	//
+	//#ifdef _WITH_SOUND_RESOURCE
+	//	m_pSkinnedAnimationController->SetCallbackKey(0, 0.1f, _T("Footstep01"));
+	//	m_pSkinnedAnimationController->SetCallbackKey(1, 0.5f, _T("Footstep02"));
+	//	m_pSkinnedAnimationController->SetCallbackKey(2, 0.9f, _T("Footstep03"));
+	//#else
+	//
+	//	AnimationControllers[0]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
+	//	//AnimationControllers[0]->SetCallbackKey(2, 0, 0.2f, _T("Sound/swordAttack.wav"));
+	//	AnimationControllers[0]->SetCallbackKey(3, 0, 0.0333f, _T("Sound/player_damaged.wav"));
+	//	AnimationControllers[0]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
+	//	AnimationControllers[0]->SetCallbackKey(5, 0, 0.9666f, _T("Sound/Jump.wav"));
+	//
+	//
+	//	AnimationControllers[1]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
+	//	AnimationControllers[1]->SetCallbackKey(2, 0, 0.2f, _T("Sound/gunAttack.wav"));
+	//	AnimationControllers[1]->SetCallbackKey(3, 0, 0.0333f, _T("Sound/player_damaged.wav"));
+	//	AnimationControllers[1]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
+	//	AnimationControllers[1]->SetCallbackKey(5, 0, 0.9666f, _T("Sound/Jump.wav"));
+	//
+	//
+	//	AnimationControllers[2]->SetCallbackKey(1, 0, 0.2f, _T("Sound/walk.wav"));
+	//	//AnimationControllers[2]->SetCallbackKey(2, 0, 0.2f, _T("Sound/attack.wav"));
+	//	AnimationControllers[2]->SetCallbackKey(3, 0, 0.0333f, _T("Sound/player_damaged.wav"));
+	//	AnimationControllers[2]->SetCallbackKey(4, 0, 0.2f, _T("Sound/death.wav"));
+	//	AnimationControllers[2]->SetCallbackKey(5, 0, 0.9666f, _T("Sound/Jump.wav"));
+	//
+	//#endif
+	//	CAnimationCallbackHandler* pAnimationCallbackHandler = new CSoundCallbackHandler();
+	//
+	//	AnimationControllers[0]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+	//	//AnimationControllers[0]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+	//	AnimationControllers[0]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
+	//	AnimationControllers[0]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
+	//	AnimationControllers[0]->SetAnimationCallbackHandler(5, pAnimationCallbackHandler);
+	//
+	//	AnimationControllers[1]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+	//	AnimationControllers[1]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+	//	AnimationControllers[1]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
+	//	AnimationControllers[1]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
+	//	AnimationControllers[1]->SetAnimationCallbackHandler(5, pAnimationCallbackHandler);
+	//
+	//	AnimationControllers[2]->SetAnimationCallbackHandler(1, pAnimationCallbackHandler);
+	//	//AnimationControllers[2]->SetAnimationCallbackHandler(2, pAnimationCallbackHandler);
+	//	AnimationControllers[2]->SetAnimationCallbackHandler(3, pAnimationCallbackHandler);
+	//	AnimationControllers[2]->SetAnimationCallbackHandler(4, pAnimationCallbackHandler);
+	//	AnimationControllers[2]->SetAnimationCallbackHandler(5, pAnimationCallbackHandler);
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
 	//m_xmOOBB = BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(10, 4, 10));
 
-	obBox = BoundingOrientedBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(15, 10, 12), XMFLOAT4(0, 0, 0, 1));
+	obBox = BoundingOrientedBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(15, 10, 15), XMFLOAT4(0, 0, 0, 1));
 
 
 
@@ -452,6 +464,7 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		m_pCamera = OnChangeCamera(FIRST_PERSON_CAMERA, nCurrentCameraMode);
 		m_pCamera->SetTimeLag(0.0f);
 		m_pCamera->SetOffset(XMFLOAT3(0.0f, 20.0f, 5.0f));
+		//m_pCamera->SetOffset(XMFLOAT3(0.0f, 20.0f, 12.0f));
 		m_pCamera->GenerateProjectionMatrix(1.01f, 5000.0f, ASPECT_RATIO, 60.0f);
 		m_pCamera->SetViewport(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0.0f, 1.0f);
 		m_pCamera->SetScissorRect(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT);
@@ -469,12 +482,12 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		m_pCamera->SetScissorRect(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT);
 		break;
 	case THIRD_PERSON_CAMERA:
-		SetFriction(50.0f);
-		SetGravity(XMFLOAT3(0.0f, -5.0f, 0.0f));
-		SetMaxVelocityXZ(10.0f);
-		SetMaxVelocityY(100.f);
+		SetFriction(300.0f);
+		SetGravity(XMFLOAT3(0.0f, -20.0f, 0.0f));
+		SetMaxVelocityXZ(100.0f);
+		SetMaxVelocityY(300.f);
 		m_pCamera = OnChangeCamera(THIRD_PERSON_CAMERA, nCurrentCameraMode);
-		m_pCamera->SetTimeLag(0.25f);
+		m_pCamera->SetTimeLag(0.2f);
 		m_pCamera->SetOffset(XMFLOAT3(0.0f, 40.0f, -100.0f));
 		m_pCamera->GenerateProjectionMatrix(1.01f, 5000.0f, ASPECT_RATIO, 60.0f);
 		m_pCamera->SetViewport(0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, 0.0f, 1.0f);
@@ -649,7 +662,7 @@ HRESULT SoundPlayer::LoadWaveFile(const wchar_t* filename)
 	return S_OK;
 }
 
-bool SoundPlayer::LoadWave(const wchar_t* filename)
+bool SoundPlayer::LoadWave(const wchar_t* filename, int type = 0)
 {
 	HRESULT hr;
 	// WAVE 파일 로드
@@ -660,18 +673,22 @@ bool SoundPlayer::LoadWave(const wchar_t* filename)
 		return false;
 	}
 
-	//sourceVoice_ = nullptr;//0506
+	if (type == 1)
+	{
+		buffer_.Flags = XAUDIO2_END_OF_STREAM;
+		buffer_.LoopCount = 0; // 한 번만 재생하고 멈추기 위해 루프 횟수를 0으로 설정
+	}
 
 	if (nullptr == sourceVoice_)
 	{
-		if (false ==Initialize())
+		if (false == Initialize())
 		{
 			// 소스 보이스 생성
 			hr = xAudio2_->CreateSourceVoice(&sourceVoice_, &waveFormat_);
 			if (FAILED(hr)) {
 				cout << "323호에서 오류나면 소스 보이스 생성" << endl;
 				return false;
-			}	
+			}
 		}
 
 		//Initialize();

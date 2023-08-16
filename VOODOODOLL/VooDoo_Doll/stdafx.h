@@ -27,29 +27,10 @@
 #include< cstdlib >
 
 
+
 //sound
 #include <xaudio2.h>
 #pragma comment(lib, "xaudio2.lib")
-
-
-//ui
-#include <unordered_map>
-#include <utility>
-//#include <pair>
-constexpr float WINDOW_MODE_RATE = 1.f;
-//#include <SpriteBatch.h>
-//#include <SimpleMath.h>
-#include<memory>
-#include <d3d12.h>
-#include <d3dcompiler.h>
-#include <dxgi1_6.h>
-#include <d2d1_3.h>
-#include <dwrite_3.h>
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d2d1.lib")
-#pragma comment(lib, "dwrite.lib")
-
 
 
 
@@ -63,7 +44,7 @@ constexpr float WINDOW_MODE_RATE = 1.f;
 #include<iostream>
 using namespace std;
 using namespace chrono;
-//
+
 
 #include <WS2tcpip.h>
 #pragma comment(lib, "WS2_32.LIB")
@@ -128,11 +109,13 @@ extern HINSTANCE						ghAppInstance;
 
 #pragma comment(lib, "dxguid.lib")
 
+
 // TODO: 프로그램에 필요한 추가 헤더는 여기에서 참조합니다.
 
 extern UINT	gnCbvSrvDescriptorIncrementSize;
 extern UINT	gnRtvDescriptorIncrementSize;
 extern UINT gnDsvDescriptorIncrementSize;
+extern UINT gnCbvSrvUavDescriptorIncrementSize;
 
 extern void SynchronizeResourceTransition(ID3D12GraphicsCommandList* pd3dCommandList, ID3D12Resource* pd3dResource, D3D12_RESOURCE_STATES d3dStateBefore, D3D12_RESOURCE_STATES d3dStateAfter);
 extern void WaitForGpuComplete(ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, UINT64 nFenceValue, HANDLE hFenceEvent);

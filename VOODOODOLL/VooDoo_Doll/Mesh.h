@@ -27,95 +27,40 @@ class CGameObject;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 
-struct Vertex abstract
-{
-	explicit Vertex() = default;
-	~Vertex() = default;
-};
-
-struct PosTex : public Vertex {
-	PosTex() : m_Position(), m_Texcoord() { }
-	~PosTex() { }
-
-	//static D3D12_INPUT_LAYOUT_DESC GetInputLayoutDesc();
-
-	XMFLOAT3 m_Position;
-	XMFLOAT2 m_Texcoord;
-};
-
-class GpuResource
+class CVertex
 {
 public:
-	explicit GpuResource(){}
-	virtual ~GpuResource(){}
+	XMFLOAT3						m_xmf3Position;
 
 public:
-	ID3D12Resource* operator->() { return m_Resource.Get(); }
-	const ID3D12Resource* operator->() const { return m_Resource.Get(); }
-
-	ID3D12Resource* Get() { return m_Resource.Get(); }
-
-protected:
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource;
+	CVertex() { m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); }
+	CVertex(XMFLOAT3 xmf3Position) { m_xmf3Position = xmf3Position; }
+	~CVertex() { }
 };
-
-class UploadBuffer : public GpuResource
+class CTexturedVertex : public CVertex
 {
 public:
-	UploadBuffer(){}
-	explicit UploadBuffer(UINT64 bytes){}
-	~UploadBuffer(){}
+	XMFLOAT2						m_xmf2TexCoord;
 
 public:
-	void Create(UINT64 bytes){}
-
-	void* GetCPUPointer() {
-		D3D12_RANGE read_range = { 0, 0 };
-		void* data_begin = nullptr;
-
-		m_Resource->Map(NULL, &read_range, &data_begin);
-		return data_begin;
-	}
-
-	void CopyData(void* src){}
-
-private:
-
-};
-// vertex buffer, index buffer, constant buffer모두 이걸로 퉁치자
-class GpuBuffer : public GpuResource
-{
-public:
-	GpuBuffer() { };
-	~GpuBuffer() { };
-
-
-	void Create(UINT64 bytes, bool cb){}
-
-	void CopyData(UploadBuffer& uploader){}
-	void TransitionResourceState(D3D12_RESOURCE_STATES state){}
-
-private:
-	inline UINT64 GetSize() { return m_Resource->GetDesc().Width; }
+	CTexturedVertex() { m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); m_xmf2TexCoord = XMFLOAT2(0.0f, 0.0f); }
+	CTexturedVertex(float x, float y, float z, XMFLOAT2 xmf2TexCoord) { m_xmf3Position = XMFLOAT3(x, y, z); m_xmf2TexCoord = xmf2TexCoord; }
+	CTexturedVertex(XMFLOAT3 xmf3Position, XMFLOAT2 xmf2TexCoord = XMFLOAT2(0.0f, 0.0f)) { m_xmf3Position = xmf3Position; m_xmf2TexCoord = xmf2TexCoord; }
+	~CTexturedVertex() { }
 };
 
 class CMesh
 {
 public:
-	CMesh(){}
+	CMesh() {}
 	CMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
-	CMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName);
+	CMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, int);
 	virtual ~CMesh();
 
 private:
 	int								m_nReferences = 0;
 
 public:
-	GpuBuffer m_VertexBuffer;
-	GpuBuffer m_IndexBuffer;
-
-	UploadBuffer m_VertexUploadBuffer;
-	UploadBuffer m_IndexUploadBuffer;
 
 	char							m_pstrMeshName[64] = { 0 };
 	BoundingBox						m_xmBoundingBox;
@@ -123,10 +68,11 @@ public:
 	XMFLOAT3* m_pxmf3Positions = NULL;
 	XMFLOAT3* m_pxmf3Normals = NULL;
 	int								m_nVertices = 0;
+	CTexturedVertex pVertices[6];
 	XMFLOAT2* m_pxmf2TextureCoords = NULL;
 
-	ID3D12Resource*									m_pd3dTextureCoordsBuffer = NULL;
-	ID3D12Resource*									m_pd3dTextureCoordUploadBuffer;
+	ID3D12Resource* m_pd3dTextureCoordsBuffer = NULL;
+	ID3D12Resource* m_pd3dTextureCoordUploadBuffer;
 
 	UINT* m_pnIndices = NULL;
 	UINT							m_nSubsets = 0;
@@ -155,7 +101,7 @@ public:
 	UINT							m_nStride = 0;
 	ID3D12Resource* m_pd3dVertexBuffer = NULL;
 	ID3D12Resource* m_pd3dVertexUploadBuffer = NULL;
-	
+
 
 protected:
 	UINT							m_nType = 0x00;
@@ -168,7 +114,7 @@ protected:
 	UINT							m_nOffset = 0;
 
 protected:
-	
+
 	D3D12_VERTEX_BUFFER_VIEW		m_d3dPositionBufferView;
 
 	int								m_nSubMeshes = 0;
@@ -187,12 +133,12 @@ public:
 
 	virtual void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList, void* pContext);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, int nSubSet, UINT nSubset);
-	
+
 
 	virtual void OnPostRender(ID3D12GraphicsCommandList* pd3dCommandList, void* pContext);
 
-	void LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName);
-	
+	void LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, int);
+
 	void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList);
 
 public:
@@ -205,7 +151,7 @@ public:
 class CStandardMesh : public CMesh
 {
 public:
-	CStandardMesh(){}
+	CStandardMesh() {}
 	CStandardMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual ~CStandardMesh();
 
@@ -253,7 +199,7 @@ public:
 class CSkinnedMesh : public CStandardMesh
 {
 public:
-	CSkinnedMesh(){}
+	CSkinnedMesh() {}
 	CSkinnedMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual ~CSkinnedMesh();
 
@@ -298,3 +244,12 @@ public:
 	virtual void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList, void* pContext);
 };
 
+class CTexturedRectMesh : public CMesh
+{
+public:
+	CTexturedRectMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fWidth = 20.0f, float fHeight = 20.0f, float fDepth = 20.0f, float fxPosition = 0.0f, float fyPosition = 0.0f, float fzPosition = 0.0f);
+	virtual ~CTexturedRectMesh();
+
+	CTexturedVertex Vertices[6];
+	void Scale(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float _scale);
+};

@@ -2,7 +2,7 @@
 
 constexpr short PORT_NUM = 3500;
 constexpr short BUF_SIZE = 512;
-constexpr short NAME_SIZE = 20;
+constexpr short IDPW_SIZE = 11;
 constexpr short MAX_USER = 9000;
 constexpr short MAX_ROOM = 3000;
 constexpr short MAX_USER_PER_ROOM = 3;
@@ -14,24 +14,27 @@ constexpr short W_HEIGHT = 400;
 constexpr char CS_LOGIN = 0;
 constexpr char CS_SIGNUP = 1;
 constexpr char CS_SIGNIN = 2;
-constexpr char CS_MOVE = 3;
+constexpr char CS_HEARTBEAT = 3;
 constexpr char CS_ROTATE = 4;
 constexpr char CS_ATTACK = 5;
 constexpr char CS_INTERACTION = 6;
 constexpr char CS_CHANGEWEAPON = 7;
 
-constexpr char SC_LOGIN_INFO = 8;
+constexpr char SC_GAME_START = 8;
 constexpr char SC_ADD_PLAYER = 9;
 constexpr char SC_REMOVE_PLAYER = 10;
-constexpr char SC_MOVE_PLAYER = 11;
+constexpr char SC_UPDATE_PLAYER = 11;
 constexpr char SC_ROTATE_PLAYER = 12;
-constexpr char SC_SUMMON_MONSTER = 13;
-constexpr char SC_MOVE_MONSTER = 14;
-constexpr char SC_OPEN_DOOR = 15;
-constexpr char SC_LOGIN_COMPLETE = 16;
-constexpr char SC_GAME_CLEAR = 17;
-constexpr char SC_INTERACTION = 18;
-
+constexpr char SC_ATTACK = 13;
+constexpr char SC_CHANGEWEAPON = 14;
+constexpr char SC_SUMMON_MONSTER = 15;
+constexpr char SC_MOVE_MONSTER = 16;
+constexpr char SC_OPEN_DOOR = 17;
+constexpr char SC_SIGNUP = 18;
+constexpr char SC_SIGNIN = 19;
+constexpr char SC_GAME_CLEAR = 20;
+constexpr char SC_INTERACTION = 21;
+constexpr char SC_MONSTER_DAMAGED = 22;
 #include "stdafx.h"
 
 #define _STRESS_TEST
@@ -40,44 +43,32 @@ constexpr char SC_INTERACTION = 18;
 struct CS_LOGIN_PACKET {
 	unsigned char size;
 	char	type;
-	//char	name[NAME_SIZE];
 };
 constexpr short CS_LOGIN_PACKET_SIZE = sizeof(CS_LOGIN_PACKET);
 
 struct CS_SIGN_PACKET {
 	unsigned char size;
 	char	type;
-	char id[NAME_SIZE];
-	char password[NAME_SIZE];
+	wchar_t id[IDPW_SIZE];
+	wchar_t password[IDPW_SIZE];
 };
 constexpr short CS_SIGN_PACKET_SIZE = sizeof(CS_SIGN_PACKET);
 
-//struct CS_SIGNIN_PACKET {
-//	unsigned char size;
-//	char	type;
-//	char id[NAME_SIZE];
-//	char password[NAME_SIZE];
-//};
-//constexpr short CS_SIGNIN_PACKET_SIZE = sizeof(CS_SIGNIN_PACKET);
-
-struct CS_MOVE_PACKET {
+struct CS_HEARTBEAT_PACKET {
 	unsigned char size;
 	char	type;
-	DWORD	direction = 0;
-	short	id;
+	short	direction = 0;
 	XMFLOAT3 pos;
 	XMFLOAT3 vel;
-
 #ifdef _STRESS_TEST
 	unsigned	move_time;
 #endif
 };
-constexpr short CS_MOVE_PACKET_SIZE = sizeof(CS_MOVE_PACKET);
+constexpr short CS_MOVE_PACKET_SIZE = sizeof(CS_HEARTBEAT_PACKET);
 
 struct CS_ROTATE_PACKET {
 	unsigned char size;
 	char	type;
-	short	id;
 	float cxDelta = 0.f;
 	float cyDelta = 0.f;
 	float czDelta = 0.f;
@@ -87,41 +78,34 @@ constexpr short CS_ROTATE_PACKET_SIZE = sizeof(CS_ROTATE_PACKET);
 struct CS_ATTACK_PACKET {
 	unsigned char size;
 	char	type;
-	short	id;
-	XMFLOAT3 pos;
 };
 constexpr short CS_ATTACK_PACKET_SIZE = sizeof(CS_ATTACK_PACKET);
 
 struct CS_INTERACTION_PACKET {
 	unsigned char size;
 	char	type;
-	short	id;
-	XMFLOAT3 pos;
 };
 constexpr short CS_INTERACTION_PACKET_SIZE = sizeof(CS_INTERACTION_PACKET);
 
 struct CS_CHANGEWEAPON_PACKET {
 	unsigned char size;
 	char	type;
-	short	id;
-	short cur_weaponType;
 };
 constexpr short CS_CHANGEWEAPON_PACKET_SIZE = sizeof(CS_CHANGEWEAPON_PACKET);
 
-struct SC_LOGIN_INFO_PACKET {
+struct SC_GAME_START_PACKET {
 	unsigned char size;
 	char	type;
 	short	id;
 	XMFLOAT3 pos;
 };
-constexpr short SC_LOGIN_INFO_PACKET_SIZE = sizeof(SC_LOGIN_INFO_PACKET);
+constexpr short SC_GAME_START_PACKET_SIZE = sizeof(SC_GAME_START_PACKET);
 
 struct SC_ADD_PLAYER_PACKET {
 	unsigned char size;
 	char	type;
 	short	id;
-	short cur_weaponType;
-	XMFLOAT3 Pos, Look, Right, Up;
+	XMFLOAT3 Pos;
 };
 constexpr short SC_ADD_PLAYER_PACKET_SIZE = sizeof(SC_ADD_PLAYER_PACKET);
 
@@ -132,7 +116,7 @@ struct SC_REMOVE_PLAYER_PACKET {
 };
 constexpr short SC_REMOVE_PLAYER_PACKET_SIZE = sizeof(SC_REMOVE_PLAYER_PACKET);
 
-struct SC_MOVE_PLAYER_PACKET {
+struct SC_UPDATE_PLAYER_PACKET {
 	unsigned char size;
 	char	type;
 	short	id;
@@ -144,7 +128,7 @@ struct SC_MOVE_PLAYER_PACKET {
 	unsigned	move_time;
 #endif
 };
-constexpr short SC_MOVE_PLAYER_PACKET_SIZE = sizeof(SC_MOVE_PLAYER_PACKET);
+constexpr short SC_UPDATE_PLAYER_PACKET_SIZE = sizeof(SC_UPDATE_PLAYER_PACKET);
 
 struct SC_ROTATE_PLAYER_PACKET {
 	unsigned char size;
@@ -153,6 +137,21 @@ struct SC_ROTATE_PLAYER_PACKET {
 	XMFLOAT3 Look, Right;
 };
 constexpr short SC_ROTATE_PLAYER_PACKET_SIZE = sizeof(SC_ROTATE_PLAYER_PACKET);
+
+struct SC_ATTACK_PACKET {
+	unsigned char size;
+	char	type;
+	short	id;
+};
+constexpr short SC_ATTACK_PACKET_SIZE = sizeof(SC_ATTACK_PACKET);
+
+struct SC_CHANGEWEAPON_PACKET {
+	unsigned char size;
+	char	type;
+	short	id;
+	short	cur_weaponType;
+};
+constexpr short SC_CHANGEWEAPON_PACKET_SIZE = sizeof(SC_CHANGEWEAPON_PACKET);
 
 struct SC_SUMMON_MONSTER_PACKET {
 	unsigned char size;
@@ -178,7 +177,7 @@ struct SC_MOVE_MONSTER_PACKET {
 	short HP;
 	bool is_alive;
 	XMFLOAT3 BulletPos;
-	unsigned short animation_track; // 애니메이션 타입
+	short animation_track; // 애니메이션 타입
 };
 constexpr short SC_MOVE_MONSTER_PACKET_SIZE = sizeof(SC_MOVE_MONSTER_PACKET);
 
@@ -190,17 +189,16 @@ struct SC_OPEN_DOOR_PACKET {
 };
 constexpr short SC_OPEN_DOOR_PACKET_SIZE = sizeof(SC_OPEN_DOOR_PACKET);
 
-struct SC_LOGIN_COMPLETE_PACKET {
+struct SC_SIGN_PACKET {
 	unsigned char size;
 	char	type;
 	bool	success;
 };
-constexpr short SC_LOGIN_COMPLETE_PACKET_SIZE = sizeof(SC_LOGIN_COMPLETE_PACKET);
+constexpr short SC_SIGN_PACKET_SIZE = sizeof(SC_SIGN_PACKET);
 
 struct SC_GAME_CLEAR_PACKET {
 	unsigned char size;
 	char	type;
-	short	id;
 };
 constexpr short SC_GAME_CLEAR_PACKET_SIZE = sizeof(SC_GAME_CLEAR_PACKET);
 
@@ -211,4 +209,22 @@ struct SC_INTERACTION_PACKET {
 	short	obj_id;
 };
 constexpr short SC_INTERACTION_PACKET_SIZE = sizeof(SC_INTERACTION_PACKET);
+
+struct SC_START_GAME_PACKET {
+	unsigned char size;
+	char	type;
+	short	your_id;
+	XMFLOAT3 start_pos;
+};
+constexpr short SC_START_GAME_PACKET_SIZE = sizeof(SC_START_GAME_PACKET);
+
+
+struct SC_MONSTER_DAMAGED_PACKET {
+	unsigned char size;
+	char	type;
+	short	player_id;
+	short	monster_id;
+	short	remain_HP;
+};
+
 #pragma pack (pop)
